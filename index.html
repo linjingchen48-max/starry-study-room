@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>星辰御书房</title>
+  <meta name="theme-color" content="#0a1b2a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="星辰御书房" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="data.css" />
+  <link rel="stylesheet" href="distraction.css" />
+  <link rel="stylesheet" href="growth.css" />
+  <link rel="stylesheet" href="star-map.css" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="storage.css" />
+</head>
+
+<body>
+  <div class="app">
+    <header class="app-header">
+      <p class="tag">星辰御书房 · 学习监督 × 康熙人格修炼</p>
+      <h1 id="pageTitle">今日御案</h1>
+      <p class="quote">人贵有恒，事贵有序。今日不求尽善，但求不废。</p>
+    </header>
+
+    <!-- 首页 -->
+    <main id="homePage" class="page active">
+        <section class="card dashboard-card">
+  <div class="dashboard-top">
+    <div>
+      <p class="small-title">今日</p>
+      <h2 id="dashboardDate">今日御案</h2>
+      <p id="dashboardQuote" class="dashboard-quote">人贵有恒，事贵有序。</p>
+    </div>
+
+    <div class="dashboard-status">
+      <span id="dashboardState">未入座</span>
+      <p>当前状态</p>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div>
+      <span id="dashboardTaskRate">0%</span>
+      <p>任务完成率</p>
+    </div>
+
+    <div>
+      <span id="dashboardMinutes">0</span>
+      <p>今日专注</p>
+    </div>
+
+    <div>
+      <span id="dashboardStars">0</span>
+      <p>星辰</p>
+    </div>
+
+    <div>
+      <span id="dashboardSeals">0</span>
+      <p>御印</p>
+    </div>
+  </div>
+
+  <div class="dashboard-suggestion">
+    <p class="small-title">下一步建议</p>
+    <p id="dashboardSuggestion">先写下今日最重要的一件学习任务。</p>
+  </div>
+</section>
+      <section class="card hero-card">
+        <div>
+          <p class="small-title">当前阶段</p>
+          <h2>入书房</h2>
+          <p class="muted">先建立秩序，再追求效率。</p>
+        </div>
+        <div class="badge" id="taskCount">0 项</div>
+      </section>
+
+      <section class="card">
+        <h2>今日学习任务</h2>
+        <p class="muted">先写下今天最重要的学习任务，不要太多。</p>
+
+        <input id="taskInput" placeholder="例如：数学极限题 5 道" />
+        <input id="goalInput" placeholder="最低标准：例如认真完成 2 道" />
+
+        <button id="saveTaskBtn">保存今日御案</button>
+
+        <div id="taskList" class="task-list"></div>
+      </section>
+    </main>
+
+    <!-- 御书房 -->
+<main id="focusPage" class="page">
+  <section class="card focus-card">
+    <h2>御书房专注</h2>
+    <p id="currentFocusTask" class="muted">当前目标：先从今日御案中选一件事开始。</p>
+
+    <select id="durationSelect">
+      <option value="15">15 分钟 · 轻量启动</option>
+      <option value="25" selected>25 分钟 · 标准专注</option>
+      <option value="45">45 分钟 · 深度学习</option>
+      <option value="60">60 分钟 · 长时修炼</option>
+    </select>
+
+    <div id="timer">25:00</div>
+
+    <div class="progress-wrap">
+      <div id="progressBar" class="progress-bar"></div>
+    </div>
+
+    <p id="focusStatus" class="focus-status">尚未入座</p>
+
+    <div class="focus-buttons">
+      <button id="startFocusBtn">开始入座</button>
+      <button id="pauseFocusBtn" class="ghost-btn">暂停</button>
+      <button id="resetFocusBtn" class="ghost-btn">重置</button>
+    </div>
+
+    <button id="completeFocusBtn" class="wide-btn">完成本轮专注，点亮星辰</button>
+  </section>
+
+  <section class="card">
+    <h2>朕心浮动</h2>
+    <p class="muted">如果你想分心，先不要退出，先把任务降级。</p>
+
+    <div class="distraction-grid">
+  <button
+    class="ghost-btn distraction-btn"
+    data-distraction="hard"
+    data-advice="先别急着做出来，只做第一步：读题、圈条件、判断题型。"
+  >
+    太难了
+  </button>
+
+  <button
+    class="ghost-btn distraction-btn"
+    data-distraction="phone"
+    data-advice="再坚持 5 分钟。5 分钟后再决定要不要休息。"
+  >
+    想刷手机
+  </button>
+
+  <button
+    class="ghost-btn distraction-btn"
+    data-distraction="tired"
+    data-advice="把任务降级。现在只做低强度复习，不做高难题。"
+  >
+    太累了
+  </button>
+
+  <button
+    class="ghost-btn distraction-btn"
+    data-distraction="start"
+    data-advice="不要想完整计划。现在只写下第一步要做什么。"
+  >
+    不会开始
+  </button>
+</div>
+    <p id="adviceText" class="advice">先稳住，不急着否定自己。</p>
+  </section>
+</main>
+
+   <!-- 修炼 -->
+<main id="practicePage" class="page">
+  <section class="card">
+    <h2>康熙人格五维修炼</h2>
+    <p class="muted">
+      每日只练一点，不求立刻改变，但求长期成势。
+    </p>
+
+    <div class="seal-row">
+      <div>
+        <span id="practiceSeals">0</span>
+        <p>御印</p>
+      </div>
+      <div>
+        <span id="currentPracticeType">沉稳</span>
+        <p>当前维度</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="practice-grid">
+    <div class="practice-card">
+      <h3>沉稳</h3>
+      <p>表情管理、语速控制、遇事不慌。</p>
+      <button class="practice-pick-btn" data-type="calm">抽取任务</button>
+    </div>
+
+    <div class="practice-card">
+      <h3>自律</h3>
+      <p>学习打卡、最低标准、持续完成。</p>
+      <button class="practice-pick-btn" data-type="discipline">抽取任务</button>
+    </div>
+
+    <div class="practice-card">
+      <h3>洞察</h3>
+      <p>看本质、找原因、识别结构。</p>
+      <button class="practice-pick-btn" data-type="insight">抽取任务</button>
+    </div>
+
+    <div class="practice-card">
+      <h3>格局</h3>
+      <p>不被小事牵着走，训练长远视角。</p>
+      <button class="practice-pick-btn" data-type="vision">抽取任务</button>
+    </div>
+
+    <div class="practice-card">
+      <h3>言行</h3>
+      <p>少废话、有分寸、有气场。</p>
+      <button class="practice-pick-btn" data-type="speech">抽取任务</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>当前修炼任务</h2>
+    <p id="practiceTaskText" class="current-practice">
+      今日修炼：说话前停一秒，不急着解释，不急着反驳。
+    </p>
+    <button id="completePracticeBtn" class="wide-btn">完成修炼，获得御印</button>
+  </section>
+</main>
+
+    <!-- 档案 -->
+<main id="archivePage" class="page">
+  <section class="card">
+    <h2>星图档案</h2>
+    <p class="muted">这里记录你的学习数据、星辰、御印和复盘情况。</p>
+
+    <div class="stats">
+      <div>
+        <span id="archiveTaskCount">0</span>
+        <p>今日任务</p>
+      </div>
+      <div>
+        <span id="archiveStars">0</span>
+        <p>星辰</p>
+      </div>
+      <div>
+        <span id="archiveMinutes">0</span>
+        <p>专注分钟</p>
+      </div>
+      <div>
+        <span id="archiveSeals">0</span>
+        <p>御印</p>
+      </div>
+    </div>
+  </section>
+  <section class="card growth-card">
+  <h2>人格成长阶位</h2>
+  <section class="card star-map-card">
+  <h2>星辰星图</h2>
+  <p class="muted">每一次专注，都会点亮一颗星。星图不是装饰，而是你持续行动的痕迹。</p>
+
+  <div class="star-map-header">
+    <div>
+      <p class="small-title">当前星图阶段</p>
+      <h3 id="starMapTitle">星辰未明</h3>
+    </div>
+
+    <div class="star-map-count">
+      <span id="starMapCount">0</span>
+      <p>已点亮</p>
+    </div>
+  </div>
+
+  <div id="starMapGrid" class="star-map-grid"></div>
+
+  <div class="star-map-comment">
+    <p class="small-title">星图评语</p>
+    <p id="starMapComment">先完成一次专注，点亮第一颗星。</p>
+  </div>
+</section>
+  <p class="muted">学习积累星辰，修炼获得御印，持续活跃形成长期主义。</p>
+
+  <div class="growth-main">
+    <div>
+      <p class="small-title">当前阶位</p>
+      <h3 id="growthLevelName">入书房</h3>
+      <p id="growthLevelDesc" class="growth-desc">心志初萌，先建立秩序。</p>
+    </div>
+
+    <div class="growth-score">
+      <span id="growthScore">0</span>
+      <p>成长值</p>
+    </div>
+  </div>
+
+  <div class="growth-progress-wrap">
+    <div id="growthProgressBar" class="growth-progress-bar"></div>
+  </div>
+
+  <p id="growthNextText" class="growth-next">距离下一阶位还需继续积累。</p>
+
+  <div class="growth-stats">
+    <div>
+      <span id="growthStreak">0</span>
+      <p>连续活跃天数</p>
+    </div>
+
+    <div>
+      <span id="growthActiveDays">0</span>
+      <p>总活跃天数</p>
+    </div>
+
+    <div>
+      <span id="growthFocusRounds">0</span>
+      <p>专注轮数</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">里程碑徽章</h3>
+  <div id="growthBadges" class="growth-badges"></div>
+</section>
+<section class="card data-card">
+  <h2>学习数据看板</h2>
+  <p class="muted">这里会根据你的任务、专注、复盘与修炼，生成今日学习状态。</p>
+
+  <div class="data-grid">
+    <div class="data-box">
+      <span id="dataTaskRate">0%</span>
+      <p>任务完成率</p>
+    </div>
+
+    <div class="data-box">
+      <span id="dataTodayMinutes">0</span>
+      <p>今日专注分钟</p>
+    </div>
+
+    <div class="data-box">
+      <span id="dataTodaySessions">0</span>
+      <p>今日专注次数</p>
+    </div>
+
+    <div class="data-box">
+      <span id="dataAvgSession">0</span>
+      <p>平均每轮分钟</p>
+    </div>
+
+    <div class="data-box">
+      <span id="dataActiveDays">0</span>
+      <p>活跃天数</p>
+    </div>
+
+    <div class="data-box">
+      <span id="dataTotalScore">0</span>
+      <p>成长值</p>
+    </div>
+  </div>
+
+  <h3 class="sub-title">近 7 日专注趋势</h3>
+  <div id="weekBars" class="week-bars"></div>
+
+  <div class="data-comment">
+    <p class="small-title">数据评语</p>
+    <p id="dataComment">暂无数据。先完成一次专注，点亮第一颗星。</p>
+  </div>
+</section>
+<section class="card distraction-card">
+  <h2>分心原因统计</h2>
+  <p class="muted">每一次“朕心浮动”都会被记录下来，用来分析你最容易被什么打断。</p>
+
+  <div class="distraction-stats">
+    <div class="distraction-box">
+      <span id="distractionHard">0</span>
+      <p>太难了</p>
+    </div>
+
+    <div class="distraction-box">
+      <span id="distractionPhone">0</span>
+      <p>想刷手机</p>
+    </div>
+
+    <div class="distraction-box">
+      <span id="distractionTired">0</span>
+      <p>太累了</p>
+    </div>
+
+    <div class="distraction-box">
+      <span id="distractionStart">0</span>
+      <p>不会开始</p>
+    </div>
+  </div>
+
+  <div class="distraction-advice-box">
+    <p class="small-title">分心诊断</p>
+    <p id="distractionMainReason">暂无分心记录。</p>
+    <p id="distractionSuggestion">先完成一次御书房专注，再观察你的分心模式。</p>
+  </div>
+</section>
+  <section class="card">
+    <h2>今日奏对</h2>
+    <p class="muted">不只是记录今天，而是看清今天。写得简单也可以，关键是诚实。</p>
+
+    <label class="review-label">一、今日完成了什么？</label>
+    <textarea id="reviewDone" placeholder="例如：完成数学极限 3 道，背了 30 个单词。"></textarea>
+
+    <label class="review-label">二、今日为何分心？</label>
+    <textarea id="reviewDistraction" placeholder="例如：题太难、想刷手机、情绪不好、太累。"></textarea>
+
+    <label class="review-label">三、今日哪一刻最浮躁？</label>
+    <textarea id="reviewRestless" placeholder="例如：做题卡住的时候，或者刚开始学习前。"></textarea>
+
+    <label class="review-label">四、今日有没有做到“沉稳”？</label>
+    <textarea id="reviewCalm" placeholder="例如：有/没有。具体是哪一件事？"></textarea>
+
+    <label class="review-label">五、明日最该改进的一件事是什么？</label>
+    <textarea id="reviewTomorrow" placeholder="例如：明天先做最难的一题，不先刷手机。"></textarea>
+
+    <button id="saveReviewBtn" class="wide-btn">保存奏对，生成御批</button>
+
+    <div class="royal-comment-box">
+      <p class="small-title">今日御批</p>
+      <p id="royalComment">尚未生成今日评语。</p>
+    </div>
+  </section>
+  <section class="card storage-card">
+  <h2>数据管理</h2>
+  <p class="muted">导出你的学习记录、星辰、御印、复盘和分心统计。换电脑或清缓存前，建议先备份。</p>
+
+  <div class="storage-grid">
+    <button id="exportDataBtn">导出数据</button>
+    <button id="importDataBtn" class="ghost-btn">导入数据</button>
+    <button id="clearAllDataBtn" class="danger-btn">清空数据</button>
+  </div>
+
+  <input id="importDataInput" type="file" accept=".json" hidden />
+
+  <div class="storage-info-box">
+    <p class="small-title">当前数据状态</p>
+    <p id="storageInfo">正在读取数据……</p>
+  </div>
+</section>
+</main>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+     <button class="nav-btn active" data-page="homePage" data-title="今日御案">首页</button>
+     <button class="nav-btn" data-page="focusPage" data-title="御书房">御书房</button>
+     <button class="nav-btn" data-page="practicePage" data-title="人格修炼">修炼</button>
+     <button class="nav-btn" data-page="archivePage" data-title="星图档案">档案</button>
+    </nav>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="data.js"></script>
+  <script src="distraction.js"></script>
+  <script src="growth.js"></script>
+  <script src="star-map.js"></script>
+  <script src="dashboard.js"></script>
+  <script src="storage.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js");
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "星辰御书房",
+  "short_name": "御书房",
+  "description": "学习监督与康熙人格修炼系统",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a1b2a",
+  "theme_color": "#0a1b2a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

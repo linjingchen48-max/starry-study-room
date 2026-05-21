@@ -1,0 +1,88 @@
+.star-map-card {
+  position: relative;
+}
+
+.star-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.star-map-header h3 {
+  margin: 6px 0 0;
+  color: #f7d774;
+  font-size: 24px;
+}
+
+.star-map-count {
+  min-width: 86px;
+  padding: 14px 10px;
+  text-align: center;
+  border-radius: 18px;
+  background: rgba(247, 215, 116, 0.12);
+  border: 1px solid rgba(247, 215, 116, 0.24);
+}
+
+.star-map-count span {
+  display: block;
+  color: #f7d774;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.star-map-count p {
+  margin: 6px 0 0;
+  color: #c7d1e8;
+  font-size: 13px;
+}
+
+.star-map-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  padding: 18px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(247, 215, 116, 0.12), transparent 25%),
+    radial-gradient(circle at 80% 20%, rgba(120, 160, 220, 0.14), transparent 30%),
+    rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.star-node {
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 18px;
+}
+
+.star-node.lit {
+  color: #f7d774;
+  background: rgba(247, 215, 116, 0.14);
+  border-color: rgba(247, 215, 116, 0.36);
+  box-shadow: 0 0 18px rgba(247, 215, 116, 0.28);
+}
+
+.star-map-comment {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(247, 215, 116, 0.1);
+  border: 1px solid rgba(247, 215, 116, 0.22);
+}
+
+.star-map-comment p {
+  margin: 0;
+}
+
+#starMapComment {
+  margin-top: 8px;
+  color: #f7d774;
+  line-height: 1.8;
+}

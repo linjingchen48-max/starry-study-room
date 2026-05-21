@@ -1,0 +1,137 @@
+.growth-card {
+  position: relative;
+}
+
+.growth-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.growth-main h3 {
+  margin: 6px 0;
+  color: #f7d774;
+  font-size: 28px;
+}
+
+.growth-desc {
+  margin: 0;
+  color: #c7d1e8;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.growth-score {
+  min-width: 96px;
+  padding: 16px 10px;
+  text-align: center;
+  border-radius: 18px;
+  background: rgba(247, 215, 116, 0.12);
+  border: 1px solid rgba(247, 215, 116, 0.24);
+}
+
+.growth-score span {
+  display: block;
+  color: #f7d774;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.growth-score p {
+  margin: 6px 0 0;
+  color: #c7d1e8;
+  font-size: 13px;
+}
+
+.growth-progress-wrap {
+  width: 100%;
+  height: 12px;
+  margin: 18px 0 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.growth-progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d4af37, #f7d774);
+  transition: width 0.35s ease;
+}
+
+.growth-next {
+  margin: 0 0 16px;
+  color: #f7d774;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.growth-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.growth-stats div {
+  padding: 14px 8px;
+  text-align: center;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+.growth-stats span {
+  display: block;
+  color: #f7d774;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.growth-stats p {
+  margin: 6px 0 0;
+  color: #c7d1e8;
+  font-size: 13px;
+}
+
+.growth-badges {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.growth-badge {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+.growth-badge.unlocked {
+  background: rgba(247, 215, 116, 0.12);
+  border-color: rgba(247, 215, 116, 0.25);
+}
+
+.growth-badge-title {
+  margin: 0 0 6px;
+  color: #f7d774;
+  font-weight: 800;
+}
+
+.growth-badge-desc {
+  margin: 0;
+  color: #d8e0ef;
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+@media (max-width: 430px) {
+  .growth-main {
+    align-items: flex-start;
+  }
+
+  .growth-stats {
+    grid-template-columns: 1fr;
+  }
+}

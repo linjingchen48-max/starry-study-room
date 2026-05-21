@@ -1,0 +1,134 @@
+.bottom-nav {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.bottom-nav button {
+  font-size: 12px;
+}
+
+#mistakeWrong,
+#mistakeCorrect {
+  width: 100%;
+  min-height: 90px;
+  margin: 8px 0 14px;
+  padding: 14px;
+  border: none;
+  border-radius: 15px;
+  outline: none;
+  color: white;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: 15px;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: inherit;
+}
+
+#mistakeWrong::placeholder,
+#mistakeCorrect::placeholder {
+  color: #b9c2d6;
+}
+
+.mistake-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  text-align: center;
+}
+
+.mistake-stats div {
+  padding: 14px 8px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+.mistake-stats span {
+  display: block;
+  color: #f7d774;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.mistake-stats p {
+  margin: 6px 0 0;
+  color: #c7d1e8;
+  font-size: 13px;
+}
+
+.mistake-comment-box {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(247, 215, 116, 0.1);
+  border: 1px solid rgba(247, 215, 116, 0.22);
+}
+
+.mistake-comment-box p {
+  margin: 0;
+}
+
+#mistakeDiagnosis {
+  margin-top: 8px;
+  color: #f7d774;
+  line-height: 1.8;
+}
+
+.mistake-list {
+  color: #d8e0ef;
+  line-height: 1.7;
+}
+
+.mistake-item {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+.mistake-item.reviewed {
+  opacity: 0.72;
+}
+
+.mistake-title {
+  margin: 0 0 8px;
+  color: #f5deb3;
+  font-weight: 800;
+}
+
+.mistake-meta {
+  margin: 0 0 8px;
+  color: #f7d774;
+  font-size: 13px;
+}
+
+.mistake-text {
+  margin: 6px 0;
+  color: #d8e0ef;
+  font-size: 14px;
+}
+
+.mistake-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.mistake-small-btn {
+  padding: 8px 10px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.mistake-small-btn.review-btn {
+  background: rgba(212, 175, 55, 0.22);
+  color: #f7d774;
+}
+
+@media (max-width: 430px) {
+  .mistake-stats {
+    grid-template-columns: 1fr;
+  }
+}

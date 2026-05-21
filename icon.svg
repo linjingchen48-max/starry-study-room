@@ -1,0 +1,12 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="120" fill="#0a1b2a"/>
+  <circle cx="256" cy="256" r="168" fill="none" stroke="#d4af37" stroke-width="10" opacity="0.72"/>
+  <circle cx="256" cy="256" r="118" fill="none" stroke="#f7d774" stroke-width="4" opacity="0.45"/>
+  <path d="M156 298C190 250 223 226 256 226C289 226 322 250 356 298" fill="none" stroke="#f1e7d6" stroke-width="14" stroke-linecap="round"/>
+  <path d="M190 318H322" stroke="#d4af37" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="178" cy="150" r="8" fill="#f7d774"/>
+  <circle cx="344" cy="158" r="6" fill="#f7d774" opacity="0.8"/>
+  <circle cx="382" cy="270" r="5" fill="#f7d774" opacity="0.7"/>
+  <circle cx="132" cy="252" r="5" fill="#f7d774" opacity="0.7"/>
+  <text x="256" y="392" text-anchor="middle" font-size="52" font-family="serif" fill="#f7d774">御</text>
+</svg>
