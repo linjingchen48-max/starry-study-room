@@ -147,6 +147,7 @@ function clearAllAppData() {
   if (typeof renderDistractionPanel === "function") renderDistractionPanel();
   if (typeof renderGrowthPanel === "function") renderGrowthPanel();
   if (typeof renderStarMap === "function") renderStarMap();
+  if (typeof renderPracticeRadar === "function") renderPracticeRadar();
   if (typeof renderDashboard === "function") renderDashboard();
 
   renderStorageInfo();

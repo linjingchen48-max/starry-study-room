@@ -15,7 +15,7 @@ const RADAR_SIZE = 360;
 const RADAR_CENTER = 180;
 const RADAR_RADIUS = 108;
 const RADAR_LEVELS = 4;
-const RADAR_MIN_SCALE = 5;
+const RADAR_MIN_SCALE = 3;
 
 function getRadarValues(stats) {
   const source = stats || {};
