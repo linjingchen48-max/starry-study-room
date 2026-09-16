@@ -1,0 +1,129 @@
+.radar-block {
+  margin-top: 18px;
+}
+
+.radar-intro {
+  margin: 6px 0 12px;
+}
+
+.radar-chart {
+  display: grid;
+  place-items: center;
+  padding: 8px 4px 4px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(247, 215, 116, 0.12), transparent 42%),
+    radial-gradient(circle at 80% 16%, rgba(120, 160, 220, 0.14), transparent 30%),
+    rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.radar-chart svg {
+  width: min(100%, 360px);
+  height: auto;
+  display: block;
+}
+
+.radar-core {
+  fill: rgba(8, 18, 32, 0.35);
+}
+
+.radar-ring {
+  fill: rgba(247, 215, 116, 0.03);
+  stroke: rgba(247, 215, 116, 0.22);
+  stroke-width: 1;
+}
+
+.radar-axis {
+  stroke: rgba(199, 209, 232, 0.28);
+  stroke-width: 1;
+}
+
+.radar-shape {
+  fill: rgba(247, 215, 116, 0.28);
+  stroke: #f7d774;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.radar-dot {
+  fill: #f7d774;
+  stroke: rgba(10, 27, 42, 0.9);
+  stroke-width: 1.5;
+}
+
+.radar-label {
+  fill: #f5deb3;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.radar-legend {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.radar-legend-item {
+  padding: 10px 4px;
+  text-align: center;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.radar-legend-item span {
+  display: block;
+  color: #c7d1e8;
+  font-size: 12px;
+}
+
+.radar-legend-item strong {
+  display: block;
+  margin-top: 4px;
+  color: #f7d774;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.radar-comment {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(247, 215, 116, 0.1);
+  border: 1px solid rgba(247, 215, 116, 0.22);
+}
+
+.radar-comment p {
+  margin: 0;
+}
+
+#radarComment {
+  margin-top: 8px;
+  color: #f7d774;
+  line-height: 1.8;
+}
+
+@media (max-width: 430px) {
+  .radar-legend {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .radar-legend-item {
+    padding: 8px 2px;
+  }
+
+  .radar-legend-item span {
+    font-size: 11px;
+  }
+
+  .radar-legend-item strong {
+    font-size: 16px;
+  }
+
+  .radar-label {
+    font-size: 13px;
+  }
+}

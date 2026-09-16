@@ -1,4 +1,4 @@
-const CACHE_NAME = "starry-study-room-v11";
+const CACHE_NAME = "starry-study-room-v12";
 
 const FILES_TO_CACHE = [
   "./",
@@ -13,6 +13,8 @@ const FILES_TO_CACHE = [
   "./growth.js",
   "./star-map.css",
   "./star-map.js",
+  "./radar.css",
+  "./radar.js",
   "./dashboard.css",
   "./dashboard.js",
   "./storage.css",

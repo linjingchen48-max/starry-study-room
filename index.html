@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="distraction.css" />
   <link rel="stylesheet" href="growth.css" />
   <link rel="stylesheet" href="star-map.css" />
+  <link rel="stylesheet" href="radar.css" />
   <link rel="stylesheet" href="dashboard.css" />
   <link rel="stylesheet" href="storage.css" />
 </head>
@@ -271,6 +272,17 @@
 
   <div id="starMapGrid" class="star-map-grid"></div>
 
+  <div class="radar-block">
+    <p class="small-title">人格五维雷达</p>
+    <p class="muted radar-intro">修炼次数会点亮对应维度：沉稳、自律、洞察、格局、言行。</p>
+    <div id="practiceRadar" class="radar-chart"></div>
+    <div id="radarLegend" class="radar-legend"></div>
+    <div class="radar-comment">
+      <p class="small-title">雷达评语</p>
+      <p id="radarComment">五维尚未点亮。完成一次人格修炼后，对应轴会向外展开。</p>
+    </div>
+  </div>
+
   <div class="star-map-comment">
     <p class="small-title">星图评语</p>
     <p id="starMapComment">先完成一次专注，点亮第一颗星。</p>
@@ -452,6 +464,7 @@
   <script src="distraction.js"></script>
   <script src="growth.js"></script>
   <script src="star-map.js"></script>
+  <script src="radar.js"></script>
   <script src="dashboard.js"></script>
   <script src="storage.js"></script>
 <script>
