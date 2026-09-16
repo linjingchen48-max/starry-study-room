@@ -1,0 +1,11 @@
+{
+  "name": "Starry Study Room",
+  "install": "test -f index.html && echo 'Static site: no dependencies to install.'",
+  "terminals": [
+    {
+      "name": "web",
+      "command": "python3 -m http.server 8000 --bind 0.0.0.0"
+    }
+  ],
+  "ports": [8000]
+}
