@@ -947,8 +947,16 @@ html:not(.is-ready) *::after {
 }
 
 .radar-axis {
-  stroke: var(--line);
+  stroke: var(--line-strong);
   stroke-width: 1;
+}
+
+:root[data-theme="night"] .radar-ring {
+  stroke: rgba(236, 230, 218, 0.26);
+}
+
+:root[data-theme="night"] .radar-ring:first-child {
+  fill: var(--surface-raised);
 }
 
 .radar-shape {
