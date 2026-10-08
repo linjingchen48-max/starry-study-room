@@ -1,12 +1,7 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="120" fill="#0a1b2a"/>
-  <circle cx="256" cy="256" r="168" fill="none" stroke="#d4af37" stroke-width="10" opacity="0.72"/>
-  <circle cx="256" cy="256" r="118" fill="none" stroke="#f7d774" stroke-width="4" opacity="0.45"/>
-  <path d="M156 298C190 250 223 226 256 226C289 226 322 250 356 298" fill="none" stroke="#f1e7d6" stroke-width="14" stroke-linecap="round"/>
-  <path d="M190 318H322" stroke="#d4af37" stroke-width="10" stroke-linecap="round"/>
-  <circle cx="178" cy="150" r="8" fill="#f7d774"/>
-  <circle cx="344" cy="158" r="6" fill="#f7d774" opacity="0.8"/>
-  <circle cx="382" cy="270" r="5" fill="#f7d774" opacity="0.7"/>
-  <circle cx="132" cy="252" r="5" fill="#f7d774" opacity="0.7"/>
-  <text x="256" y="392" text-anchor="middle" font-size="52" font-family="serif" fill="#f7d774">御</text>
+  <rect width="512" height="512" rx="112" fill="#f4efe4"/>
+  <rect x="116" y="116" width="280" height="280" rx="22" fill="#b5372b" transform="rotate(-3 256 256)"/>
+  <rect x="140" y="140" width="232" height="232" rx="12" fill="none" stroke="#fff8f0" stroke-width="6" opacity="0.55" transform="rotate(-3 256 256)"/>
+  <text x="256" y="322" text-anchor="middle" font-size="176" font-weight="700" font-family="'Songti SC','STSong','Noto Serif CJK SC','Noto Serif SC',serif" fill="#fff8f0" transform="rotate(-3 256 256)">御</text>
+  <path d="M404 92l9 19 21 3-15 14 4 21-19-10-19 10 4-21-15-14 21-3z" fill="#c39a3e"/>
 </svg>
