@@ -1,0 +1,192 @@
+/*
+  星辰御书房 · Design Tokens
+  昼（宣纸朱批）为默认，夜（墨夜星空）通过 [data-theme="night"] 切换。
+  金色只属于星辰（专注所得），朱砂只属于御印与御批（修炼与复盘所得）。
+  组件只引用语义变量（--surface、--text 等），不直接写色值。
+*/
+
+:root {
+  /* 字体：标题用系统宋体，不加载网络字体 */
+  --font-serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Noto Serif SC",
+    "Source Han Serif SC", "Source Han Serif CN", "SimSun", serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Noto Sans CJK SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Roboto Mono", Menlo,
+    Consolas, monospace;
+
+  /* 字号：移动端基准 15px，1.2 左右的模数 */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.875rem;
+  --text-3xl: 2.5rem;
+  --text-display: clamp(3.25rem, 14vw, 4.75rem);
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.6;
+  --leading-loose: 1.85;
+
+  --tracking-wide: 0.08em;
+  --tracking-wider: 0.16em;
+
+  /* 间距：4px 栅格 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* 圆角：书页感，克制 */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* 动效 */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 420ms;
+  --duration-theme: 600ms;
+
+  /* 布局 */
+  --content-max: 720px;
+  --content-wide: 1040px;
+  --rail-width: 220px;
+  --tabbar-height: 64px;
+  --header-height: 60px;
+
+  /* 层级 */
+  --z-nav: 20;
+  --z-toast: 60;
+  --z-overlay: 50;
+}
+
+/* ---------- 昼 · 宣纸朱批 ---------- */
+:root,
+:root[data-theme="day"] {
+  color-scheme: light;
+
+  --paper: #f4efe4;
+  --paper-grain: rgba(120, 96, 60, 0.035);
+  --surface: #fbf8f1;
+  --surface-raised: #fffdf8;
+  --surface-sunken: #ece5d6;
+  --surface-hover: rgba(31, 27, 22, 0.04);
+  --surface-pressed: rgba(31, 27, 22, 0.08);
+
+  --text: #1f1b16;
+  --text-secondary: #4a4339;
+  --text-tertiary: #6e6457;
+  --text-inverse: #fbf8f1;
+
+  --line: rgba(31, 27, 22, 0.1);
+  --line-strong: rgba(31, 27, 22, 0.2);
+
+  --ink: #1f1b16;
+  --ink-hover: #3a332a;
+
+  --cinnabar: #b5372b;
+  --cinnabar-strong: #962a20;
+  --cinnabar-soft: rgba(181, 55, 43, 0.09);
+  --cinnabar-line: rgba(181, 55, 43, 0.28);
+
+  --gold: #83601b;
+  --gold-bright: #c39a3e;
+  --gold-soft: rgba(131, 96, 27, 0.1);
+  --gold-line: rgba(131, 96, 27, 0.3);
+
+  --success: #3d6b55;
+  --success-soft: rgba(61, 107, 85, 0.1);
+  --warning: #93641a;
+  --warning-soft: rgba(147, 100, 26, 0.1);
+  --danger: #a3271c;
+  --danger-soft: rgba(163, 39, 28, 0.08);
+
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px rgba(181, 55, 43, 0.55);
+
+  --shadow-sm: 0 1px 0 rgba(31, 27, 22, 0.04), 0 1px 2px rgba(31, 27, 22, 0.05);
+  --shadow-md: 0 1px 0 rgba(31, 27, 22, 0.04), 0 8px 24px -12px rgba(60, 44, 20, 0.22);
+  --shadow-lg: 0 24px 60px -24px rgba(40, 28, 10, 0.35);
+
+  --star-sky: transparent;
+  --star-dim: rgba(31, 27, 22, 0.24);
+  --overlay: rgba(31, 27, 22, 0.32);
+}
+
+/* ---------- 夜 · 墨夜星空 ---------- */
+:root[data-theme="night"] {
+  color-scheme: dark;
+
+  --paper: #0d1015;
+  --paper-grain: rgba(255, 255, 255, 0.015);
+  --surface: #141820;
+  --surface-raised: #1a1f28;
+  --surface-sunken: #0a0c10;
+  --surface-hover: rgba(236, 230, 218, 0.05);
+  --surface-pressed: rgba(236, 230, 218, 0.09);
+
+  --text: #ece6da;
+  --text-secondary: #bcb4a6;
+  --text-tertiary: #8a8274;
+  --text-inverse: #12151b;
+
+  --line: rgba(236, 230, 218, 0.09);
+  --line-strong: rgba(236, 230, 218, 0.18);
+
+  --ink: #ece6da;
+  --ink-hover: #ffffff;
+
+  --cinnabar: #dc5d4f;
+  --cinnabar-strong: #e8796c;
+  --cinnabar-soft: rgba(220, 93, 79, 0.12);
+  --cinnabar-line: rgba(220, 93, 79, 0.34);
+
+  --gold: #e0b75a;
+  --gold-bright: #f3d283;
+  --gold-soft: rgba(224, 183, 90, 0.12);
+  --gold-line: rgba(224, 183, 90, 0.32);
+
+  --success: #7fb59a;
+  --success-soft: rgba(127, 181, 154, 0.12);
+  --warning: #d9a85a;
+  --warning-soft: rgba(217, 168, 90, 0.12);
+  --danger: #e57366;
+  --danger-soft: rgba(229, 115, 102, 0.12);
+
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px rgba(224, 183, 90, 0.6);
+
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 12px 32px -16px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 28px 70px -24px rgba(0, 0, 0, 0.8);
+
+  --star-sky: radial-gradient(ellipse at 50% -20%, rgba(70, 92, 130, 0.22), transparent 60%);
+  --star-dim: rgba(236, 230, 218, 0.22);
+  --overlay: rgba(4, 6, 10, 0.6);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --text-base: 1rem;
+    --text-display: 5.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-theme: 0ms;
+  }
+}

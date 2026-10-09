@@ -2,477 +2,585 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>星辰御书房</title>
-  <meta name="theme-color" content="#0a1b2a" />
+  <meta name="description" content="星辰御书房：学习监督 × 康熙人格修炼。写御案、入座专注、五维修炼、晚间奏对。" />
+  <meta name="theme-color" content="#f4efe4" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="星辰御书房" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon.svg" />
   <link rel="apple-touch-icon" href="icon.svg" />
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="data.css" />
-  <link rel="stylesheet" href="distraction.css" />
-  <link rel="stylesheet" href="growth.css" />
-  <link rel="stylesheet" href="star-map.css" />
-  <link rel="stylesheet" href="radar.css" />
-  <link rel="stylesheet" href="dashboard.css" />
-  <link rel="stylesheet" href="storage.css" />
+
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("starryStudyRoom_theme");
+        if (t === "night" || t === "day") document.documentElement.dataset.theme = t;
+        else if (window.matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.dataset.theme = "night";
+      } catch (e) {}
+    })();
+  </script>
+
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/pages.css" />
 </head>
 
 <body>
-  <div class="app">
-    <header class="app-header">
-      <p class="tag">星辰御书房 · 学习监督 × 康熙人格修炼</p>
-      <h1 id="pageTitle">今日御案</h1>
-      <p class="quote">人贵有恒，事贵有序。今日不求尽善，但求不废。</p>
-    </header>
-
-    <!-- 首页 -->
-    <main id="homePage" class="page active">
-        <section class="card dashboard-card">
-  <div class="dashboard-top">
-    <div>
-      <p class="small-title">今日</p>
-      <h2 id="dashboardDate">今日御案</h2>
-      <p id="dashboardQuote" class="dashboard-quote">人贵有恒，事贵有序。</p>
-    </div>
-
-    <div class="dashboard-status">
-      <span id="dashboardState">未入座</span>
-      <p>当前状态</p>
-    </div>
-  </div>
-
-  <div class="dashboard-grid">
-    <div>
-      <span id="dashboardTaskRate">0%</span>
-      <p>任务完成率</p>
-    </div>
-
-    <div>
-      <span id="dashboardMinutes">0</span>
-      <p>今日专注</p>
-    </div>
-
-    <div>
-      <span id="dashboardStars">0</span>
-      <p>星辰</p>
-    </div>
-
-    <div>
-      <span id="dashboardSeals">0</span>
-      <p>御印</p>
-    </div>
-  </div>
-
-  <div class="dashboard-suggestion">
-    <p class="small-title">下一步建议</p>
-    <p id="dashboardSuggestion">先写下今日最重要的一件学习任务。</p>
-  </div>
-</section>
-      <section class="card hero-card">
-        <div>
-          <p class="small-title">当前阶段</p>
-          <h2>入书房</h2>
-          <p class="muted">先建立秩序，再追求效率。</p>
-        </div>
-        <div class="badge" id="taskCount">0 项</div>
-      </section>
-
-      <section class="card">
-        <h2>今日学习任务</h2>
-        <p class="muted">先写下今天最重要的学习任务，不要太多。</p>
-
-        <input id="taskInput" placeholder="例如：数学极限题 5 道" />
-        <input id="goalInput" placeholder="最低标准：例如认真完成 2 道" />
-
-        <button id="saveTaskBtn">保存今日御案</button>
-
-        <div id="taskList" class="task-list"></div>
-      </section>
-    </main>
-
-    <!-- 御书房 -->
-<main id="focusPage" class="page">
-  <section class="card focus-card">
-    <h2>御书房专注</h2>
-    <p id="currentFocusTask" class="muted">当前目标：先从今日御案中选一件事开始。</p>
-
-    <select id="durationSelect">
-      <option value="15">15 分钟 · 轻量启动</option>
-      <option value="25" selected>25 分钟 · 标准专注</option>
-      <option value="45">45 分钟 · 深度学习</option>
-      <option value="60">60 分钟 · 长时修炼</option>
-    </select>
-
-    <div id="timer">25:00</div>
-
-    <div class="progress-wrap">
-      <div id="progressBar" class="progress-bar"></div>
-    </div>
-
-    <p id="focusStatus" class="focus-status">尚未入座</p>
-
-    <div class="focus-buttons">
-      <button id="startFocusBtn">开始入座</button>
-      <button id="pauseFocusBtn" class="ghost-btn">暂停</button>
-      <button id="resetFocusBtn" class="ghost-btn">重置</button>
-    </div>
-
-    <button id="completeFocusBtn" class="wide-btn">完成本轮专注，点亮星辰</button>
-  </section>
-
-  <section class="card">
-    <h2>朕心浮动</h2>
-    <p class="muted">如果你想分心，先不要退出，先把任务降级。</p>
-
-    <div class="distraction-grid">
-  <button
-    class="ghost-btn distraction-btn"
-    data-distraction="hard"
-    data-advice="先别急着做出来，只做第一步：读题、圈条件、判断题型。"
-  >
-    太难了
-  </button>
-
-  <button
-    class="ghost-btn distraction-btn"
-    data-distraction="phone"
-    data-advice="再坚持 5 分钟。5 分钟后再决定要不要休息。"
-  >
-    想刷手机
-  </button>
-
-  <button
-    class="ghost-btn distraction-btn"
-    data-distraction="tired"
-    data-advice="把任务降级。现在只做低强度复习，不做高难题。"
-  >
-    太累了
-  </button>
-
-  <button
-    class="ghost-btn distraction-btn"
-    data-distraction="start"
-    data-advice="不要想完整计划。现在只写下第一步要做什么。"
-  >
-    不会开始
-  </button>
-</div>
-    <p id="adviceText" class="advice">先稳住，不急着否定自己。</p>
-  </section>
-</main>
-
-   <!-- 修炼 -->
-<main id="practicePage" class="page">
-  <section class="card">
-    <h2>康熙人格五维修炼</h2>
-    <p class="muted">
-      每日只练一点，不求立刻改变，但求长期成势。
-    </p>
-
-    <div class="seal-row">
-      <div>
-        <span id="practiceSeals">0</span>
-        <p>御印</p>
-      </div>
-      <div>
-        <span id="currentPracticeType">沉稳</span>
-        <p>当前维度</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="practice-grid">
-    <div class="practice-card">
-      <h3>沉稳</h3>
-      <p>表情管理、语速控制、遇事不慌。</p>
-      <button class="practice-pick-btn" data-type="calm">抽取任务</button>
-    </div>
-
-    <div class="practice-card">
-      <h3>自律</h3>
-      <p>学习打卡、最低标准、持续完成。</p>
-      <button class="practice-pick-btn" data-type="discipline">抽取任务</button>
-    </div>
-
-    <div class="practice-card">
-      <h3>洞察</h3>
-      <p>看本质、找原因、识别结构。</p>
-      <button class="practice-pick-btn" data-type="insight">抽取任务</button>
-    </div>
-
-    <div class="practice-card">
-      <h3>格局</h3>
-      <p>不被小事牵着走，训练长远视角。</p>
-      <button class="practice-pick-btn" data-type="vision">抽取任务</button>
-    </div>
-
-    <div class="practice-card">
-      <h3>言行</h3>
-      <p>少废话、有分寸、有气场。</p>
-      <button class="practice-pick-btn" data-type="speech">抽取任务</button>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>当前修炼任务</h2>
-    <p id="practiceTaskText" class="current-practice">
-      今日修炼：说话前停一秒，不急着解释，不急着反驳。
-    </p>
-    <button id="completePracticeBtn" class="wide-btn">完成修炼，获得御印</button>
-  </section>
-</main>
-
-    <!-- 档案 -->
-<main id="archivePage" class="page">
-  <section class="card">
-    <h2>星图档案</h2>
-    <p class="muted">这里记录你的学习数据、星辰、御印和复盘情况。</p>
-
-    <div class="stats">
-      <div>
-        <span id="archiveTaskCount">0</span>
-        <p>今日任务</p>
-      </div>
-      <div>
-        <span id="archiveStars">0</span>
-        <p>星辰</p>
-      </div>
-      <div>
-        <span id="archiveMinutes">0</span>
-        <p>专注分钟</p>
-      </div>
-      <div>
-        <span id="archiveSeals">0</span>
-        <p>御印</p>
-      </div>
-    </div>
-  </section>
-  <section class="card growth-card">
-  <h2>人格成长阶位</h2>
-  <section class="card star-map-card">
-  <h2>星辰星图</h2>
-  <p class="muted">每一次专注，都会点亮一颗星。星图不是装饰，而是你持续行动的痕迹。</p>
-
-  <div class="star-map-header">
-    <div>
-      <p class="small-title">当前星图阶段</p>
-      <h3 id="starMapTitle">星辰未明</h3>
-    </div>
-
-    <div class="star-map-count">
-      <span id="starMapCount">0</span>
-      <p>已点亮</p>
-    </div>
-  </div>
-
-  <div id="starMapGrid" class="star-map-grid"></div>
-
-  <div class="radar-block">
-    <p class="small-title">人格五维雷达</p>
-    <p class="muted radar-intro">修炼次数会点亮对应维度：沉稳、自律、洞察、格局、言行。</p>
-    <div id="practiceRadar" class="radar-chart"></div>
-    <div id="radarLegend" class="radar-legend"></div>
-    <div class="radar-comment">
-      <p class="small-title">雷达评语</p>
-      <p id="radarComment">五维尚未点亮。完成一次人格修炼后，对应轴会向外展开。</p>
-    </div>
-  </div>
-
-  <div class="star-map-comment">
-    <p class="small-title">星图评语</p>
-    <p id="starMapComment">先完成一次专注，点亮第一颗星。</p>
-  </div>
-</section>
-  <p class="muted">学习积累星辰，修炼获得御印，持续活跃形成长期主义。</p>
-
-  <div class="growth-main">
-    <div>
-      <p class="small-title">当前阶位</p>
-      <h3 id="growthLevelName">入书房</h3>
-      <p id="growthLevelDesc" class="growth-desc">心志初萌，先建立秩序。</p>
-    </div>
-
-    <div class="growth-score">
-      <span id="growthScore">0</span>
-      <p>成长值</p>
-    </div>
-  </div>
-
-  <div class="growth-progress-wrap">
-    <div id="growthProgressBar" class="growth-progress-bar"></div>
-  </div>
-
-  <p id="growthNextText" class="growth-next">距离下一阶位还需继续积累。</p>
-
-  <div class="growth-stats">
-    <div>
-      <span id="growthStreak">0</span>
-      <p>连续活跃天数</p>
-    </div>
-
-    <div>
-      <span id="growthActiveDays">0</span>
-      <p>总活跃天数</p>
-    </div>
-
-    <div>
-      <span id="growthFocusRounds">0</span>
-      <p>专注轮数</p>
-    </div>
-  </div>
-
-  <h3 class="sub-title">里程碑徽章</h3>
-  <div id="growthBadges" class="growth-badges"></div>
-</section>
-<section class="card data-card">
-  <h2>学习数据看板</h2>
-  <p class="muted">这里会根据你的任务、专注、复盘与修炼，生成今日学习状态。</p>
-
-  <div class="data-grid">
-    <div class="data-box">
-      <span id="dataTaskRate">0%</span>
-      <p>任务完成率</p>
-    </div>
-
-    <div class="data-box">
-      <span id="dataTodayMinutes">0</span>
-      <p>今日专注分钟</p>
-    </div>
-
-    <div class="data-box">
-      <span id="dataTodaySessions">0</span>
-      <p>今日专注次数</p>
-    </div>
-
-    <div class="data-box">
-      <span id="dataAvgSession">0</span>
-      <p>平均每轮分钟</p>
-    </div>
-
-    <div class="data-box">
-      <span id="dataActiveDays">0</span>
-      <p>活跃天数</p>
-    </div>
-
-    <div class="data-box">
-      <span id="dataTotalScore">0</span>
-      <p>成长值</p>
-    </div>
-  </div>
-
-  <h3 class="sub-title">近 7 日专注趋势</h3>
-  <div id="weekBars" class="week-bars"></div>
-
-  <div class="data-comment">
-    <p class="small-title">数据评语</p>
-    <p id="dataComment">暂无数据。先完成一次专注，点亮第一颗星。</p>
-  </div>
-</section>
-<section class="card distraction-card">
-  <h2>分心原因统计</h2>
-  <p class="muted">每一次“朕心浮动”都会被记录下来，用来分析你最容易被什么打断。</p>
-
-  <div class="distraction-stats">
-    <div class="distraction-box">
-      <span id="distractionHard">0</span>
-      <p>太难了</p>
-    </div>
-
-    <div class="distraction-box">
-      <span id="distractionPhone">0</span>
-      <p>想刷手机</p>
-    </div>
-
-    <div class="distraction-box">
-      <span id="distractionTired">0</span>
-      <p>太累了</p>
-    </div>
-
-    <div class="distraction-box">
-      <span id="distractionStart">0</span>
-      <p>不会开始</p>
-    </div>
-  </div>
-
-  <div class="distraction-advice-box">
-    <p class="small-title">分心诊断</p>
-    <p id="distractionMainReason">暂无分心记录。</p>
-    <p id="distractionSuggestion">先完成一次御书房专注，再观察你的分心模式。</p>
-  </div>
-</section>
-  <section class="card">
-    <h2>今日奏对</h2>
-    <p class="muted">不只是记录今天，而是看清今天。写得简单也可以，关键是诚实。</p>
-
-    <label class="review-label">一、今日完成了什么？</label>
-    <textarea id="reviewDone" placeholder="例如：完成数学极限 3 道，背了 30 个单词。"></textarea>
-
-    <label class="review-label">二、今日为何分心？</label>
-    <textarea id="reviewDistraction" placeholder="例如：题太难、想刷手机、情绪不好、太累。"></textarea>
-
-    <label class="review-label">三、今日哪一刻最浮躁？</label>
-    <textarea id="reviewRestless" placeholder="例如：做题卡住的时候，或者刚开始学习前。"></textarea>
-
-    <label class="review-label">四、今日有没有做到“沉稳”？</label>
-    <textarea id="reviewCalm" placeholder="例如：有/没有。具体是哪一件事？"></textarea>
-
-    <label class="review-label">五、明日最该改进的一件事是什么？</label>
-    <textarea id="reviewTomorrow" placeholder="例如：明天先做最难的一题，不先刷手机。"></textarea>
-
-    <button id="saveReviewBtn" class="wide-btn">保存奏对，生成御批</button>
-
-    <div class="royal-comment-box">
-      <p class="small-title">今日御批</p>
-      <p id="royalComment">尚未生成今日评语。</p>
-    </div>
-  </section>
-  <section class="card storage-card">
-  <h2>数据管理</h2>
-  <p class="muted">导出你的学习记录、星辰、御印、复盘和分心统计。换电脑或清缓存前，建议先备份。</p>
-
-  <div class="storage-grid">
-    <button id="exportDataBtn">导出数据</button>
-    <button id="importDataBtn" class="ghost-btn">导入数据</button>
-    <button id="clearAllDataBtn" class="danger-btn">清空数据</button>
-  </div>
-
-  <input id="importDataInput" type="file" accept=".json" hidden />
-
-  <div class="storage-info-box">
-    <p class="small-title">当前数据状态</p>
-    <p id="storageInfo">正在读取数据……</p>
-  </div>
-</section>
-</main>
-
-    <!-- 底部导航 -->
-    <nav class="bottom-nav">
-     <button class="nav-btn active" data-page="homePage" data-title="今日御案">首页</button>
-     <button class="nav-btn" data-page="focusPage" data-title="御书房">御书房</button>
-     <button class="nav-btn" data-page="practicePage" data-title="人格修炼">修炼</button>
-     <button class="nav-btn" data-page="archivePage" data-title="星图档案">档案</button>
+  <a class="skip-link" href="#main">跳至正文</a>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-today" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+      <symbol id="i-focus" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 2.5h4M18.5 6.5l1.2-1.2"/></symbol>
+      <symbol id="i-seal" viewBox="0 0 24 24"><path d="M9.5 3.5h5v5.2l3.3 3v3H6.2v-3l3.3-3z"/><path d="M5 20.5h14"/></symbol>
+      <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M9 7.5h6"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.2l2.6 5.5 6 .8-4.4 4.1 1.1 6L12 16.7l-5.3 2.9 1.1-6-4.4-4.1 6-.8z"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6L6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l.8 12.2A1.5 1.5 0 0 0 8.8 20.6h6.4a1.5 1.5 0 0 0 1.5-1.4L17.5 7M9.5 7V4.5h5V7"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5.5v13M15 5.5v13"/></symbol>
+      <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4.5 9"/><path d="M4.5 4.5V9H9"/></symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5.5 21V4M5.5 4.5h11l-2.2 4 2.2 4h-11"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 20h14"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 20h14"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.4v.1"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></symbol>
+      <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M4 7h2.5c5.5 0 5.5 10 11 10H20M4 17h2.5c1.6 0 2.7-.8 3.5-2M14 9c.8-1.2 1.9-2 3.5-2H20M17.5 4.5L20 7l-2.5 2.5M17.5 14.5L20 17l-2.5 2.5"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13.5 6.5L19 12l-5.5 5.5"/></symbol>
+      <symbol id="i-brush" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5-8 8-5-5z"/><path d="M6.5 12.5c-2 .5-3 2.2-3 4.5 0 1.3-.5 2.4-1 3 3.4 0 6.2-.8 7-3.5"/></symbol>
+      <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="shell">
+    <nav class="nav" aria-label="主导航">
+      <a class="brand nav-brand" href="#today" aria-label="星辰御书房 · 回到今日">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="brand-mark-bg" x="2" y="2" width="28" height="28" rx="4"/><text class="brand-mark-text" x="16" y="22" text-anchor="middle">御</text><circle class="brand-mark-star" cx="27" cy="5" r="2.2"/></svg>
+        <span>星辰御书房</span>
+      </a>
+      <ul class="nav-list">
+        <li><a class="nav-link" href="#today" data-nav="today">
+          <svg class="icon" aria-hidden="true"><use href="#i-today"/></svg><span>今日</span><kbd class="nav-kbd" aria-hidden="true">1</kbd></a></li>
+        <li><a class="nav-link" href="#focus" data-nav="focus">
+          <svg class="icon" aria-hidden="true"><use href="#i-focus"/></svg><span>御书房</span><kbd class="nav-kbd" aria-hidden="true">2</kbd></a></li>
+        <li><a class="nav-link" href="#practice" data-nav="practice">
+          <svg class="icon" aria-hidden="true"><use href="#i-seal"/></svg><span>修炼</span><kbd class="nav-kbd" aria-hidden="true">3</kbd></a></li>
+        <li><a class="nav-link" href="#mistakes" data-nav="mistakes">
+          <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span>错题阁</span><kbd class="nav-kbd" aria-hidden="true">4</kbd></a></li>
+        <li><a class="nav-link" href="#archive" data-nav="archive">
+          <svg class="icon" aria-hidden="true"><use href="#i-star"/></svg><span>档案</span><kbd class="nav-kbd" aria-hidden="true">5</kbd></a></li>
+      </ul>
+      <p class="nav-foot">数据仅存于本机<br />按 <kbd>T</kbd> 切换昼夜</p>
     </nav>
+
+    <div class="main-col">
+      <header class="topbar" id="topbar">
+        <a class="brand" href="#today" aria-label="星辰御书房 · 回到今日">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="brand-mark-bg" x="2" y="2" width="28" height="28" rx="4"/><text class="brand-mark-text" x="16" y="22" text-anchor="middle">御</text><circle class="brand-mark-star" cx="27" cy="5" r="2.2"/></svg>
+          <span>星辰御书房</span>
+        </a>
+        <div class="topbar-actions">
+          <button type="button" class="btn btn-icon" id="themeToggle" aria-label="切换昼夜"></button>
+          <button type="button" class="btn btn-icon" id="settingsBtn" aria-label="设置与数据" title="设置与数据">
+            <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="content" id="main" tabindex="-1">
+        <div class="callout callout-danger storage-alert" id="storageAlert" role="alert" hidden>
+          <p class="callout-title" id="storageAlertTitle"></p>
+          <p class="storage-alert-text" id="storageAlertText"></p>
+          <div class="storage-alert-actions" id="storageAlertActions"></div>
+        </div>
+
+        <!-- ============ 今日 ============ -->
+        <section class="page page-today" data-route="today" aria-labelledby="todayTitle" hidden>
+          <header class="page-head">
+            <p class="eyebrow" id="todayDate">今日</p>
+            <h1 class="page-title" id="todayTitle" tabindex="-1">今日御案</h1>
+            <p class="page-lede" id="todayQuote">人贵有恒，事贵有序。今日不求尽善，但求不废。</p>
+          </header>
+
+          <div class="today-layout">
+            <aside class="today-aside" aria-label="今日概况">
+              <div class="panel overview">
+                <div class="overview-head">
+                  <p class="eyebrow">今日状态</p>
+                  <span class="tag tag-dot" id="todayState">未入座</span>
+                </div>
+                <dl class="stat-grid overview-stats">
+                  <div class="stat"><dt class="stat-label">任务完成</dt><dd class="stat-value"><span id="todayTaskRate">0</span><span class="stat-unit">%</span></dd></div>
+                  <div class="stat"><dt class="stat-label">今日专注</dt><dd class="stat-value"><span id="todayMinutes">0</span><span class="stat-unit">分钟</span></dd></div>
+                  <div class="stat"><dt class="stat-label">星辰</dt><dd class="stat-value is-star"><span id="todayStars">0</span><span class="stat-unit">颗</span></dd></div>
+                  <div class="stat"><dt class="stat-label">御印</dt><dd class="stat-value is-seal"><span id="todaySeals">0</span><span class="stat-unit">枚</span></dd></div>
+                </dl>
+                <div class="next-step">
+                  <p class="eyebrow">下一步</p>
+                  <p class="next-step-text" id="nextStepText">先写下今日最重要的一件学习任务。</p>
+                  <button type="button" class="btn btn-primary btn-sm" id="nextStepAction" hidden></button>
+                </div>
+              </div>
+            </aside>
+
+            <div class="today-main">
+              <section class="section" aria-labelledby="tasksTitle">
+                <div class="section-head">
+                  <h2 class="section-title" id="tasksTitle" tabindex="-1">御案</h2>
+                  <span class="section-meta" id="taskCountMeta"></span>
+                </div>
+                <p class="section-desc">今日最重要的一两件事。写清最低标准，心乱时只守住它。</p>
+
+                <div class="callout callout-gold callout-row carry-over" id="carryOver" hidden>
+                  <p id="carryOverText"></p>
+                  <div class="btn-row">
+                    <button type="button" class="btn btn-secondary btn-sm" id="carryOverAccept">移入今日</button>
+                    <button type="button" class="btn btn-quiet btn-sm" id="carryOverDismiss">不必了</button>
+                  </div>
+                </div>
+
+                <form class="task-form" id="taskForm" novalidate>
+                  <div class="field task-field-name">
+                    <label class="field-label" for="taskInput">任务</label>
+                    <input class="input" id="taskInput" maxlength="80" autocomplete="off" placeholder="例如：数学极限题 5 道" aria-describedby="taskInputError" />
+                    <p class="field-hint field-error" id="taskInputError" hidden></p>
+                  </div>
+                  <div class="field task-field-goal">
+                    <label class="field-label" for="goalInput">最低标准 <span class="text-tertiary">选填</span></label>
+                    <input class="input" id="goalInput" maxlength="80" autocomplete="off" placeholder="例如：认真完成 2 道" />
+                  </div>
+                  <button type="submit" class="btn btn-primary task-submit">
+                    <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>写入御案
+                  </button>
+                </form>
+
+                <ul class="rows task-list" id="taskList" aria-label="今日御案"></ul>
+              </section>
+
+              <section class="section review-section" id="reviewSection" aria-labelledby="reviewTitle">
+                <div class="section-head">
+                  <h2 class="section-title" id="reviewTitle">今日奏对</h2>
+                  <span class="section-meta" id="reviewMeta">宜在晚间</span>
+                </div>
+
+                <div id="reviewSummary"></div>
+
+                <form class="review-form" id="reviewForm" novalidate hidden>
+                  <div id="reviewFields"></div>
+                  <p class="field-hint field-error" id="reviewError" role="alert" hidden>至少写下一句真实情况，也胜过完全空白。</p>
+                  <div class="btn-row review-form-actions">
+                    <button type="submit" class="btn btn-seal">呈上奏对，求御批</button>
+                    <button type="button" class="btn btn-quiet" id="reviewCancel">取消</button>
+                  </div>
+                </form>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 御书房 ============ -->
+        <section class="page page-focus" data-route="focus" aria-labelledby="focusTitle" hidden>
+          <header class="page-head focus-head">
+            <p class="eyebrow">御书房</p>
+            <h1 class="page-title" id="focusTitle" tabindex="-1">入座</h1>
+            <p class="page-lede">此刻只做眼前一件事。入座后，书房转入夜境。</p>
+          </header>
+
+          <div class="focus-layout">
+            <div class="focus-stage" id="focusStage">
+              <div class="dial">
+                <svg class="dial-svg" viewBox="0 0 300 300" aria-hidden="true">
+                  <g id="dialTicks"></g>
+                  <circle class="dial-track" cx="150" cy="150" r="128"></circle>
+                  <circle class="dial-progress" id="dialProgress" cx="150" cy="150" r="128" transform="rotate(-90 150 150)"></circle>
+                </svg>
+                <div class="dial-center">
+                  <p class="dial-target" id="focusTarget">未指定目标</p>
+                  <p class="dial-clock num" id="focusClock" role="timer" aria-live="off">25:00</p>
+                  <p class="dial-caption" id="durationCaption">25 分钟 · 标准专注</p>
+                </div>
+              </div>
+
+              <p class="focus-status" id="focusStatus" role="status">尚未入座</p>
+
+              <div class="focus-controls">
+                <button type="button" class="btn btn-quiet" id="focusReset" disabled>
+                  <svg class="icon" aria-hidden="true"><use href="#i-reset"/></svg><span>重置</span>
+                </button>
+                <button type="button" class="btn btn-primary btn-lg focus-primary" id="focusPrimary"></button>
+                <button type="button" class="btn btn-quiet" id="focusFinish" disabled>
+                  <svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg><span>提前收卷</span>
+                </button>
+              </div>
+              <p class="focus-hint text-tertiary">按 <kbd>空格</kbd> 入座或暂停。星辰只为完整一轮点亮。</p>
+            </div>
+
+            <div class="focus-side">
+              <section class="section" aria-labelledby="focusSetupTitle">
+                <div class="section-head"><h2 class="section-title" id="focusSetupTitle">本轮安排</h2></div>
+
+                <fieldset class="field fieldset">
+                  <legend class="field-label">时长</legend>
+                  <div class="segmented duration-segmented">
+                    <input type="radio" name="focusDuration" id="dur15" value="15" /><label for="dur15">15</label>
+                    <input type="radio" name="focusDuration" id="dur25" value="25" /><label for="dur25">25</label>
+                    <input type="radio" name="focusDuration" id="dur45" value="45" /><label for="dur45">45</label>
+                    <input type="radio" name="focusDuration" id="dur60" value="60" /><label for="dur60">60</label>
+                  </div>
+                </fieldset>
+
+                <div class="field">
+                  <label class="field-label" for="focusTaskSelect">当前目标</label>
+                  <select class="select" id="focusTaskSelect"></select>
+                  <p class="field-hint" id="focusTaskHint" hidden>今日御案中暂无未完成的任务。<a href="#today">去写一件</a></p>
+                </div>
+              </section>
+
+              <section class="section" aria-labelledby="distractTitle">
+                <div class="section-head"><h2 class="section-title" id="distractTitle">朕心浮动</h2></div>
+                <p class="section-desc">想分心时先别离席。点选最接近的原因，先把任务降级。每次点选会记入档案的分心统计，可撤销。</p>
+                <div class="chip-row" id="distractionChips">
+                  <button type="button" class="chip" data-distraction="hard">太难了</button>
+                  <button type="button" class="chip" data-distraction="phone">想刷手机</button>
+                  <button type="button" class="chip" data-distraction="tired">太累了</button>
+                  <button type="button" class="chip" data-distraction="start">不会开始</button>
+                </div>
+                <div class="callout advice-box" id="adviceBox">
+                  <p class="callout-title">应对</p>
+                  <p id="adviceText" aria-live="polite">先稳住，不急着否定自己。</p>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 修炼 ============ -->
+        <section class="page page-practice" data-route="practice" aria-labelledby="practiceTitle" hidden>
+          <header class="page-head">
+            <p class="eyebrow">修炼</p>
+            <h1 class="page-title" id="practiceTitle" tabindex="-1">康熙人格五维</h1>
+            <p class="page-lede">每日只练一点，不求立刻改变，但求长期成势。完成一题，盖一枚御印。</p>
+          </header>
+
+          <div class="practice-layout">
+            <section class="practice-current" aria-labelledby="practiceCurrentTitle">
+              <h2 class="visually-hidden" id="practiceCurrentTitle">当前修炼</h2>
+              <article class="practice-card" id="practiceCard">
+                <div class="practice-card-head">
+                  <span class="tag tag-seal" id="practiceDimTag">沉稳</span>
+                  <button type="button" class="btn btn-quiet btn-sm" id="practiceShuffle">
+                    <svg class="icon icon-sm" aria-hidden="true"><use href="#i-shuffle"/></svg>换一题
+                  </button>
+                </div>
+                <p class="practice-text" id="practiceText" aria-live="polite"></p>
+                <div class="practice-card-foot">
+                  <button type="button" class="btn btn-seal btn-lg" id="practiceComplete"></button>
+                  <p class="practice-done-hint text-tertiary" id="practiceDoneHint" hidden>此题已领印。换一题，或择另一维继续。</p>
+                </div>
+              </article>
+
+              <dl class="practice-tally">
+                <div><dt>御印</dt><dd class="num text-cinnabar" id="practiceSeals">0</dd></div>
+                <div><dt>今日修炼</dt><dd class="num" id="practiceToday">0</dd></div>
+              </dl>
+            </section>
+
+            <section class="section practice-dims" aria-labelledby="dimTitle">
+              <div class="section-head">
+                <h2 class="section-title" id="dimTitle">择一维</h2>
+                <span class="section-meta">点选即抽题</span>
+              </div>
+              <div class="dimension-list" id="dimensionList" role="radiogroup" aria-labelledby="dimTitle"></div>
+            </section>
+          </div>
+        </section>
+
+        <!-- ============ 错题阁 ============ -->
+        <section class="page page-mistakes" data-route="mistakes" aria-labelledby="mistakesTitle" hidden>
+          <header class="page-head">
+            <p class="eyebrow">错题阁</p>
+            <h1 class="page-title" id="mistakesTitle" tabindex="-1">错因越清楚，进步越具体</h1>
+            <p class="page-lede">写下错误过程与正确思路。每道错题第一次重练，点亮一颗星辰。</p>
+          </header>
+
+          <div class="mistakes-layout">
+            <div class="mistakes-side">
+              <section class="section" aria-labelledby="mistakeSummaryTitle">
+                <div class="section-head"><h2 class="section-title" id="mistakeSummaryTitle">错因分布</h2></div>
+                <dl class="stat-grid cols-3 mistake-stats">
+                  <div class="stat"><dt class="stat-label">概念不清</dt><dd class="stat-value" id="mistakeConceptCount">0</dd></div>
+                  <div class="stat"><dt class="stat-label">逻辑断层</dt><dd class="stat-value" id="mistakeLogicCount">0</dd></div>
+                  <div class="stat"><dt class="stat-label">粗心失误</dt><dd class="stat-value" id="mistakeCarelessCount">0</dd></div>
+                </dl>
+                <div class="callout mistake-diagnosis">
+                  <p class="callout-title">错因诊断</p>
+                  <p id="mistakeDiagnosis"></p>
+                </div>
+              </section>
+
+              <section class="section" aria-label="记一道错题">
+                <details class="disclosure panel mistake-form-panel" id="mistakeFormDetails">
+                  <summary class="mistake-form-summary">
+                    <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>
+                    <span class="section-title">记一道错题</span>
+                    <svg class="icon icon-sm chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+                  </summary>
+                  <form class="mistake-form" id="mistakeForm" novalidate>
+                    <div class="field">
+                      <label class="field-label" for="mistakeTitle">错题</label>
+                      <input class="input" id="mistakeTitle" maxlength="120" autocomplete="off" placeholder="例如：极限 0/0 型判断错误" aria-describedby="mistakeTitleError" />
+                      <p class="field-hint field-error" id="mistakeTitleError" hidden></p>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="mistakeReason">错因</label>
+                      <select class="select" id="mistakeReason">
+                        <option value="concept">概念不清</option>
+                        <option value="logic">逻辑断层</option>
+                        <option value="careless">粗心失误</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="mistakeWrong">错误过程</label>
+                      <textarea class="textarea" id="mistakeWrong" rows="2" placeholder="当时是怎么想的、在哪一步断了"></textarea>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="mistakeCorrect">正确思路</label>
+                      <textarea class="textarea" id="mistakeCorrect" rows="2" placeholder="正确的第一步是什么、为什么"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">收入错题阁</button>
+                  </form>
+                </details>
+              </section>
+            </div>
+
+            <section class="section mistakes-main" aria-labelledby="mistakeListTitle">
+              <div class="section-head">
+                <h2 class="section-title" id="mistakeListTitle">错题档案</h2>
+                <span class="section-meta" id="mistakeListMeta"></span>
+              </div>
+              <div class="mistake-toolbar">
+                <div class="input-with-icon">
+                  <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+                  <label class="visually-hidden" for="mistakeSearch">搜索错题</label>
+                  <input class="input" id="mistakeSearch" type="search" placeholder="搜索错题、过程或思路（/）" autocomplete="off" />
+                </div>
+                <div class="chip-row" id="mistakeFilters" role="group" aria-label="按状态与错因筛选"></div>
+              </div>
+              <ul class="rows mistake-list" id="mistakeList" aria-live="polite"></ul>
+            </section>
+          </div>
+        </section>
+
+        <!-- ============ 档案 ============ -->
+        <section class="page page-archive" data-route="archive" aria-labelledby="archiveTitle" hidden>
+          <header class="page-head">
+            <p class="eyebrow">档案</p>
+            <h1 class="page-title" id="archiveTitle" tabindex="-1">星图档案</h1>
+            <p class="page-lede">学习积累星辰，修炼获得御印，持续活跃形成长期主义。</p>
+          </header>
+
+          <div class="archive-layout">
+            <section class="section archive-growth" aria-labelledby="growthTitle">
+              <div class="section-head">
+                <h2 class="section-title" id="growthTitle">成长阶位</h2>
+                <span class="section-meta">成长值 <span class="num" id="growthScore">0</span></span>
+              </div>
+              <div class="growth-hero">
+                <p class="growth-level serif" id="growthLevelName">入书房</p>
+                <p class="growth-desc" id="growthLevelDesc">心志初萌，先建立秩序。</p>
+              </div>
+              <div class="meter growth-meter" id="growthProgress" role="progressbar" aria-label="距下一阶位进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="meter-fill" id="growthProgressBar"></div>
+              </div>
+              <p class="growth-next text-secondary" id="growthNextText"></p>
+              <ol class="ladder" id="growthLadder" aria-label="阶位"></ol>
+
+              <dl class="stat-grid cols-3 growth-stats">
+                <div class="stat"><dt class="stat-label">连续活跃</dt><dd class="stat-value"><span id="growthStreak">0</span><span class="stat-unit">天</span></dd></div>
+                <div class="stat"><dt class="stat-label">总活跃</dt><dd class="stat-value"><span id="growthActiveDays">0</span><span class="stat-unit">天</span></dd></div>
+                <div class="stat"><dt class="stat-label">专注轮数</dt><dd class="stat-value"><span id="growthFocusRounds">0</span><span class="stat-unit">轮</span></dd></div>
+              </dl>
+
+              <div class="subhead-row">
+                <h3 class="subhead">里程碑</h3>
+                <span class="section-meta num" id="badgeMeta"></span>
+              </div>
+              <ul class="badges" id="growthBadges"></ul>
+            </section>
+
+            <section class="section archive-starmap" aria-labelledby="starMapHeading">
+              <div class="section-head">
+                <h2 class="section-title" id="starMapHeading">星辰星图</h2>
+                <span class="section-meta"><span class="num text-gold" id="starMapCount">0</span> <span id="starMapCapacity">/ 30</span></span>
+              </div>
+              <p class="section-desc">每一次完整专注、每一道重练的错题，都会点亮一颗星，连成你的星轨。</p>
+              <div class="star-map" id="starMap"></div>
+              <div class="star-map-caption">
+                <p class="star-map-stage serif" id="starMapTitle">星辰未明</p>
+                <p class="text-secondary" id="starMapComment"></p>
+              </div>
+            </section>
+
+            <section class="section archive-radar" aria-labelledby="radarTitle">
+              <div class="section-head">
+                <h2 class="section-title" id="radarTitle">人格五维</h2>
+                <span class="section-meta" id="radarScale"></span>
+              </div>
+              <p class="section-desc">修炼次数会点亮对应维度：沉稳、自律、洞察、格局、言行。</p>
+              <div class="radar-chart" id="practiceRadar"></div>
+              <div class="callout callout-seal">
+                <p class="callout-title">雷达评语</p>
+                <p id="radarComment"></p>
+              </div>
+            </section>
+
+            <section class="section archive-data" aria-labelledby="dataTitle">
+              <div class="section-head">
+                <h2 class="section-title" id="dataTitle">学习数据</h2>
+              </div>
+              <dl class="stat-grid cols-3">
+                <div class="stat"><dt class="stat-label">今日任务完成</dt><dd class="stat-value"><span id="dataTaskRate">0</span><span class="stat-unit">%</span></dd></div>
+                <div class="stat"><dt class="stat-label">今日专注</dt><dd class="stat-value"><span id="dataTodayMinutes">0</span><span class="stat-unit">分钟</span></dd></div>
+                <div class="stat"><dt class="stat-label">今日轮数</dt><dd class="stat-value"><span id="dataTodaySessions">0</span><span class="stat-unit">轮</span></dd></div>
+                <div class="stat"><dt class="stat-label">平均每轮</dt><dd class="stat-value"><span id="dataAvgSession">0</span><span class="stat-unit">分钟</span></dd></div>
+                <div class="stat"><dt class="stat-label">累计专注</dt><dd class="stat-value"><span id="dataTotalMinutes">0</span><span class="stat-unit">分钟</span></dd></div>
+                <div class="stat"><dt class="stat-label">综合积分</dt><dd class="stat-value"><span id="dataTotalScore">0</span></dd></div>
+              </dl>
+
+              <div class="subhead-row">
+                <h3 class="subhead">近 7 日专注</h3>
+                <span class="section-meta" id="weekMeta"></span>
+              </div>
+              <ol class="week-bars" id="weekBars" aria-label="近 7 日每日专注分钟"></ol>
+
+              <div class="callout data-comment">
+                <p class="callout-title">数据评语</p>
+                <p id="dataComment"></p>
+              </div>
+            </section>
+
+            <section class="section archive-distraction" aria-labelledby="distractionTitle">
+              <div class="section-head">
+                <h2 class="section-title" id="distractionTitle">分心档案</h2>
+              </div>
+              <ul class="hbars" id="distractionBars"></ul>
+              <div class="callout">
+                <p class="callout-title" id="distractionMainReason">暂无分心记录</p>
+                <p id="distractionSuggestion"></p>
+              </div>
+            </section>
+
+            <section class="section archive-reviews" aria-labelledby="reviewHistoryTitle">
+              <div class="section-head">
+                <h2 class="section-title" id="reviewHistoryTitle">奏对录</h2>
+                <span class="section-meta" id="reviewHistoryMeta"></span>
+              </div>
+              <ul class="rows review-history" id="reviewHistory"></ul>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
   </div>
 
-  <script src="script.js"></script>
-  <script src="data.js"></script>
-  <script src="distraction.js"></script>
-  <script src="growth.js"></script>
-  <script src="star-map.js"></script>
-  <script src="radar.js"></script>
-  <script src="dashboard.js"></script>
-  <script src="storage.js"></script>
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./sw.js");
-    });
-  }
-</script>
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+
+  <dialog class="dialog dialog-sheet" id="settingsDialog" aria-labelledby="settingsTitle">
+    <div class="dialog-head">
+      <h2 class="dialog-title" id="settingsTitle">设置</h2>
+      <button type="button" class="btn btn-icon" data-close aria-label="关闭设置">
+        <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+      </button>
+    </div>
+    <div class="dialog-scroll">
+      <div class="dialog-group">
+        <p class="dialog-group-title">外观</p>
+        <div class="segmented theme-segmented" role="radiogroup" aria-label="昼夜">
+          <input type="radio" name="themePref" id="themeAuto" value="auto" /><label for="themeAuto">跟随系统</label>
+          <input type="radio" name="themePref" id="themeDay" value="day" /><label for="themeDay">昼 · 宣纸</label>
+          <input type="radio" name="themePref" id="themeNight" value="night" /><label for="themeNight">夜 · 墨夜</label>
+        </div>
+        <div class="setting-row">
+          <div>
+            <p class="setting-title" id="focusNightLabel">入座即入夜</p>
+            <p class="setting-desc">专注进行时自动转为夜境，收卷后恢复。</p>
+          </div>
+          <button type="button" class="switch" role="switch" id="focusNightSwitch" aria-checked="true" aria-labelledby="focusNightLabel"></button>
+        </div>
+      </div>
+
+      <div class="dialog-group">
+        <p class="dialog-group-title">数据</p>
+        <p class="setting-desc">所有数据只保存在本机浏览器中，没有账号与云同步。换设备或清理浏览器前，请先导出备份。</p>
+        <dl class="storage-info" id="storageInfo"></dl>
+        <div class="btn-row storage-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="exportDataBtn">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-download"/></svg><span>导出备份</span>
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="importDataBtn">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-upload"/></svg><span>导入备份</span>
+          </button>
+          <button type="button" class="btn btn-danger-quiet btn-sm" id="clearAllDataBtn">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-trash"/></svg><span>清空数据</span>
+          </button>
+        </div>
+        <input id="importDataInput" type="file" accept=".json,application/json" hidden />
+      </div>
+
+      <div class="dialog-group">
+        <p class="dialog-group-title">快捷键</p>
+        <div class="kbd-list">
+          <span><kbd>1</kbd>–<kbd>5</kbd></span><span>切换页面</span>
+          <span><kbd>空格</kbd></span><span>入座 / 暂停（御书房）</span>
+          <span><kbd>N</kbd></span><span>写新御案（今日）</span>
+          <span><kbd>/</kbd></span><span>搜索错题</span>
+          <span><kbd>T</kbd></span><span>切换昼夜</span>
+          <span><kbd>Esc</kbd></span><span>关闭对话框</span>
+        </div>
+      </div>
+
+      <div class="dialog-group">
+        <p class="dialog-group-title">关于</p>
+        <p class="setting-desc">星辰御书房 v2 · 学习监督 × 康熙人格修炼。御批由规则生成，不调用任何在线服务。</p>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="dialog" id="confirmDialog" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+    <form method="dialog">
+      <div class="dialog-head"><h2 class="dialog-title" id="confirmTitle"></h2></div>
+      <p class="dialog-body" id="confirmBody"></p>
+      <div class="dialog-foot">
+        <button class="btn btn-quiet" value="cancel" id="confirmCancel">取消</button>
+        <button class="btn btn-primary" value="ok" id="confirmOk">确定</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/store.js"></script>
+  <script src="js/domain.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/today.js"></script>
+  <script src="js/focus.js"></script>
+  <script src="js/practice.js"></script>
+  <script src="js/radar.js"></script>
+  <script src="js/mistakes.js"></script>
+  <script src="js/archive.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/drafts.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
