@@ -1,5 +1,5 @@
 /*
-  启动：路由、键盘快捷键、跨日刷新、多标签页同步、存储异常提示、Service Worker 更新。
+  启动：路由、键盘快捷键、跨日刷新、多标签页同步、存储异常提示、草稿恢复、Service Worker 更新。
 */
 
 storageStatus.onWriteError = function() {
@@ -114,13 +114,34 @@ setInterval(function() {
 
 /* ---------- Service Worker ---------- */
 
+/*
+  更新流程：只有点了「刷新」的标签页会重新载入（先保存草稿）；
+  其他标签页在新版本接管后只提示，不强制刷新，避免丢失正在填写的内容。
+*/
+let updateRequestedHere = false;
+
+function reloadKeepingDrafts() {
+  saveDrafts();
+  location.reload();
+}
+
 function promptUpdate(worker) {
-  showToast("新版本已就绪。", {
+  showToast("新版本已就绪。未提交的输入会保留。", {
     actionLabel: "刷新",
     duration: 15000,
     onAction: function() {
+      updateRequestedHere = true;
+      saveDrafts();
       worker.postMessage({ type: "SKIP_WAITING" });
     }
+  });
+}
+
+function promptReloadAfterUpdate() {
+  showToast("新版本已在其他标签页启用。未提交的输入会保留。", {
+    actionLabel: "刷新",
+    duration: 30000,
+    onAction: reloadKeepingDrafts
   });
 }
 
@@ -130,6 +151,15 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
       .register("./sw.js")
       .then(function(registration) {
         if (registration.waiting && navigator.serviceWorker.controller) promptUpdate(registration.waiting);
+
+        // 长时间不关的标签页（尤其是安装到桌面的应用）也能发现新版本
+        const checkForUpdate = function() {
+          registration.update().catch(function() {});
+        };
+        setInterval(checkForUpdate, 60 * 60 * 1000);
+        document.addEventListener("visibilitychange", function() {
+          if (document.visibilityState === "visible") checkForUpdate();
+        });
 
         registration.addEventListener("updatefound", function() {
           const worker = registration.installing;
@@ -148,8 +178,12 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
     let reloading = false;
     navigator.serviceWorker.addEventListener("controllerchange", function() {
       if (!hadController || reloading) return;
+      if (!updateRequestedHere) {
+        promptReloadAfterUpdate();
+        return;
+      }
       reloading = true;
-      location.reload();
+      reloadKeepingDrafts();
     });
   });
 }
@@ -161,6 +195,7 @@ showRoute(getRouteFromHash());
 renderAllNow();
 renderStorageAlert();
 restoreFocusSession();
+if (restoreDrafts()) showToast("已恢复上次未提交的输入。");
 document.documentElement.classList.add("is-ready");
 
 if (!storageStatus.available) {
