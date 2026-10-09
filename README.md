@@ -18,6 +18,8 @@
 规则说明：
 
 - 只有完整完成一轮专注才点亮星辰；「提前收卷」只记录实际分钟数，不点亮星辰。
+- 跨日归属：一轮专注（含提前收卷）的分钟与轮数记在**入座当天**，与绑定的御案同一天；即使跨过午夜或离开数日后才结算，也不会改记到结算日。
+- 多个标签页同时打开时，数据会自动同步；同一轮专注只会被结算一次。
 - 快捷键：`1`–`5` 切换页面，`空格` 入座/暂停，`N` 新建御案，`/` 搜索错题，`T` 切换昼夜，`Esc` 关闭对话框。
 
 ## 数据
@@ -26,7 +28,10 @@
 
 - 当前数据结构为 `schemaVersion: 2`，任务和复盘按日期保存在 `tasksByDay` / `reviews` 中。
 - 首次打开时会自动把 v1 数据迁移到 v2：旧任务列表归入当天，旧复盘按其更新时间归档。导入旧版备份文件同样会迁移。
-- 若本地数据无法解析，原始内容会先备份到 `starryStudyRoom_v1_corrupt_<时间戳>` 再以空数据启动，不会直接丢弃。
+- 若本地数据无法解析，原始内容会先备份到 `starryStudyRoom_v1_corrupt_<时间戳>` 再以空数据启动，不会直接丢弃。若连备份也写不进去（如存储已满），页面会停止保存并在顶部提示，用户可「下载原始数据」，并在确认后才放弃原数据。
+- 若本地数据来自更新的版本（`schemaVersion` 高于当前或无法识别），页面以只读方式打开，不会用旧结构覆盖。
+- 首次从 v1 升级时，v1 原文另存到 `starryStudyRoom_v1_pre_v2_backup`。
+- 导入只接受星辰御书房的备份（v1 / v2 导出包或原始数据），会校验版本与字段类型；只有写入本机存储成功才会提示导入成功，写入失败（如空间不足）时当前数据保持不变。
 
 ## 本地运行
 
@@ -34,8 +39,9 @@
 
 ```bash
 npm start        # python3 -m http.server 8080，然后打开 http://localhost:8080
-npm run check    # 语法检查、Service Worker 预缓存与页面引用一致性、id 引用与重复检查
-npm test         # node --test：数据迁移、统计、雷达图等纯逻辑测试
+npm run check    # 语法检查、Service Worker 预缓存与页面引用一致性、缓存名是否最新、id 引用与重复检查
+npm run stamp    # 预缓存资源有改动后，重新生成 sw.js 的 CACHE_NAME
+npm test         # node --test：数据迁移与损坏保护、导入校验、专注结算、Service Worker 升级等
 ```
 
 需要 Node.js 18+（测试与检查脚本）和 Python 3（静态服务器，也可换成任意静态服务器）。
@@ -61,4 +67,4 @@ tests/              node:test 测试
 docs/design-system.md  设计系统说明
 ```
 
-修改 `index.html` 引用的资源时，需要同步更新 `sw.js` 中的 `FILES_TO_CACHE` 列表并提升 `CACHE_NAME` 版本，`npm run check` 会检查前者。
+修改 `index.html` 引用的资源时，需要同步更新 `sw.js` 中的 `FILES_TO_CACHE` 列表。`CACHE_NAME` 由「package 版本 + 预缓存资源内容哈希」组成：任何资源改动后都要运行 `npm run stamp`，否则 `npm run check` 会失败。新版本安装后会等待，用户点「刷新」后整组切换，不会新旧文件混用。
