@@ -1,5 +1,5 @@
 /*
-  数据层：读写 localStorage、v1 → v2 迁移、刷新调度。
+  数据层：读写 localStorage、v1 → v2 迁移（独立的 v2 键，见「持久化」）、刷新调度。
   不触碰 DOM，可在 Node 中直接测试（见 tests/）。
 
   v2 数据结构要点：
@@ -9,7 +9,9 @@
   - settings：外观与专注偏好
 */
 
-const STORAGE_KEY = "starryStudyRoom_v1";
+const STORAGE_KEY = "starryStudyRoom_v2";
+const LEGACY_STORAGE_KEY = "starryStudyRoom_v1";
+const LEGACY_SEEN_KEY = "starryStudyRoom_v2_legacy_seen";
 const THEME_HINT_KEY = "starryStudyRoom_theme";
 const SCHEMA_VERSION = 2;
 
@@ -195,7 +197,8 @@ function normalizeActiveFocus(session) {
     startedAt: startedAt,
     endsAt: status === "running" ? endsAt : null,
     remainingMs: status === "paused" ? remainingMs : totalMs,
-    taskId: typeof session.taskId === "string" && /^[\w-]{0,48}$/.test(session.taskId) ? session.taskId : ""
+    taskId: typeof session.taskId === "string" && /^[\w-]{0,48}$/.test(session.taskId) ? session.taskId : "",
+    ownerTab: typeof session.ownerTab === "string" && /^[\w-]{1,48}$/.test(session.ownerTab) ? session.ownerTab : ""
   };
 }
 
@@ -286,12 +289,19 @@ function migrateData(raw, todayKey = dateKey()) {
 /* ---------- 持久化 ---------- */
 
 /*
+  键分离：v2 只读写 STORAGE_KEY（starryStudyRoom_v2）。
+  v1 的 starryStudyRoom_v1 只在 v2 键不存在时读取一次用于迁移，此后 v2 永不写入它：
+  - 仍在运行的旧版页面（或长期未刷新的旧版 PWA）只会写自己的键，无法覆盖 v2 数据
+  - v1 键原样保留，可作为迁移前数据的恢复来源，回退到旧版本时也仍可读
+  迁移后旧版页面若又写入了 v1 键，会通过指纹（LEGACY_SEEN_KEY）发现并提示用户下载，但不自动合并。
+
   storageStatus.issue：
   - "corrupt"           原始数据无法解析，已另存到 backupKey，可继续使用
   - "corrupt-unsaved"   无法解析且另存失败：锁定写入，直到用户下载原始数据并明确放弃
   - "unsupported"       schemaVersion 来自更新版本或无法识别：只读，避免降级覆盖
   - "external-future"   运行中其他标签页写入了更新版本的数据：只读，需刷新
-  - "external-legacy"   运行中旧版页面写入了 v1 数据：已用本页数据恢复，需关闭旧页面
+  - "legacy-corrupt"    待迁移的 v1 数据无法解析：v1 键保持原样，以空白档案运行
+  - "legacy-changed"    迁移后旧版页面又写入了 v1 键：v2 数据未受影响，旧版写入可下载
   writeLocked 为 true 时 saveData() 一律不写入。rawSnapshot 是原始字符串，供用户下载恢复。
 */
 const storageStatus = {
@@ -302,14 +312,24 @@ const storageStatus = {
   backupKey: null,
   writeError: false,
   onWriteError: null,
-  onIssue: null
+  onIssue: null,
+  onPersistBlocked: null
 };
 
-const LEGACY_BACKUP_KEY = STORAGE_KEY + "_pre_v2_backup";
+/* 本页最近一次读到或写入的 v2 原文，用来判断其他标签页是否已写入更新的数据 */
+let lastKnownRaw = null;
 
 function getStorage() {
   try {
     return typeof localStorage !== "undefined" ? localStorage : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function readKey(storage, key) {
+  try {
+    return storage.getItem(key);
   } catch (error) {
     return null;
   }
@@ -331,7 +351,7 @@ function classifySchema(raw) {
   return "unsupported";
 }
 
-/* 只有写入后能原样读回才算备份成功 */
+/* 只有写入后能原样读回才算写入成功 */
 function writeVerified(storage, key, value) {
   try {
     storage.setItem(key, value);
@@ -339,6 +359,99 @@ function writeVerified(storage, key, value) {
   } catch (error) {
     return false;
   }
+}
+
+function parseObject(text) {
+  try {
+    const parsed = JSON.parse(text);
+    return isPlainObject(parsed) ? parsed : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/* ---------- 旧版键指纹 ---------- */
+
+/* 长度 + FNV-1a，足以判断旧版页面是否改写过 v1 键，不必再存一份全文 */
+function fingerprint(text) {
+  if (text === null || text === undefined) return "none";
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return text.length + ":" + hash.toString(16);
+}
+
+function markLegacySeen(storage = getStorage()) {
+  if (!storage || storageStatus.writeLocked) return false;
+  return writeVerified(storage, LEGACY_SEEN_KEY, fingerprint(readKey(storage, LEGACY_STORAGE_KEY)));
+}
+
+/*
+  迁移后旧版页面又写入了 v1 键时返回 true 并给出提示。
+  只提示、不合并：旧版写入基于迁移前的数据，自动合并可能把已删除的记录带回来或重复计数。
+*/
+function checkLegacyChanges() {
+  const storage = getStorage();
+  if (!storage || storageStatus.issue) return false;
+
+  const seen = readKey(storage, LEGACY_SEEN_KEY);
+  const raw = readKey(storage, LEGACY_STORAGE_KEY);
+  if (seen === null) {
+    // 迁移时 v1 数据无法解析：提示保持到用户确认为止
+    if (raw !== null && !parseObject(raw)) {
+      setStorageIssue("legacy-corrupt", { raw: raw });
+      return true;
+    }
+    markLegacySeen(storage);
+    return false;
+  }
+  if (seen === fingerprint(raw) || raw === null) return false;
+
+  setStorageIssue("legacy-changed", { raw: raw });
+  return true;
+}
+
+/* 用户已下载或确认知晓旧版写入后调用，同一份旧版数据不再重复提示 */
+function acknowledgeLegacyChanges() {
+  markLegacySeen();
+  if (storageStatus.issue === "legacy-changed" || storageStatus.issue === "legacy-corrupt") {
+    storageStatus.issue = null;
+  }
+}
+
+/* ---------- 读取 ---------- */
+
+/* v2 键不存在时：从 v1 键迁移一次。v1 键只读，不修改也不删除 */
+function loadFromLegacy(storage) {
+  const legacy = readKey(storage, LEGACY_STORAGE_KEY);
+  if (!legacy) {
+    markLegacySeen(storage);
+    return createDefaultData();
+  }
+
+  const parsed = parseObject(legacy);
+  if (!parsed) {
+    setStorageIssue("legacy-corrupt", { raw: legacy });
+    return createDefaultData();
+  }
+
+  if (classifySchema(parsed) === "unsupported") {
+    setStorageIssue("unsupported", { raw: legacy, lock: true });
+    return migrateData(parsed);
+  }
+
+  const data = migrateData(parsed);
+  const serialized = JSON.stringify(data);
+  // 写入失败不影响本次使用：v1 键原样保留，下次打开会再次迁移
+  if (writeVerified(storage, STORAGE_KEY, serialized)) {
+    lastKnownRaw = serialized;
+    markLegacySeen(storage);
+  } else {
+    console.warn("未能写入迁移后的数据，v1 原始数据保持不变");
+  }
+  return data;
 }
 
 function loadData() {
@@ -350,7 +463,6 @@ function loadData() {
   }
 
   let saved = null;
-
   try {
     saved = storage.getItem(STORAGE_KEY);
   } catch (error) {
@@ -358,16 +470,10 @@ function loadData() {
     return createDefaultData();
   }
 
-  if (!saved) return createDefaultData();
+  if (!saved) return loadFromLegacy(storage);
 
-  let parsed;
-  try {
-    parsed = JSON.parse(saved);
-  } catch (error) {
-    parsed = undefined;
-  }
-
-  if (!isPlainObject(parsed)) {
+  const parsed = parseObject(saved);
+  if (!parsed) {
     const backupKey = STORAGE_KEY + "_corrupt_" + Date.now();
     if (writeVerified(storage, backupKey, saved)) {
       setStorageIssue("corrupt", { raw: saved, backupKey: backupKey });
@@ -377,19 +483,20 @@ function loadData() {
     return createDefaultData();
   }
 
-  const schema = classifySchema(parsed);
-
-  if (schema === "unsupported") {
+  if (classifySchema(parsed) === "unsupported") {
     setStorageIssue("unsupported", { raw: saved, lock: true });
     return migrateData(parsed);
   }
 
-  // 首次升级前保留一份 v1 原文；失败不阻塞（迁移不丢弃 v1 已有字段）
-  if (schema === "legacy" && storage.getItem(LEGACY_BACKUP_KEY) === null) {
-    if (!writeVerified(storage, LEGACY_BACKUP_KEY, saved)) console.warn("未能保留 v1 原始数据备份");
-  }
-
+  lastKnownRaw = saved;
+  checkLegacyChanges();
   return migrateData(parsed);
+}
+
+/* ---------- 写入 ---------- */
+
+function canPersist() {
+  return storageStatus.available && !storageStatus.writeLocked;
 }
 
 function saveData(options = {}) {
@@ -399,7 +506,9 @@ function saveData(options = {}) {
   if (!storage) return false;
 
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    const serialized = JSON.stringify(appData);
+    storage.setItem(STORAGE_KEY, serialized);
+    lastKnownRaw = serialized;
     storageStatus.writeError = false;
     return true;
   } catch (error) {
@@ -410,6 +519,59 @@ function saveData(options = {}) {
     storageStatus.writeError = true;
     return false;
   }
+}
+
+function notifyPersistBlocked(reason) {
+  if (typeof storageStatus.onPersistBlocked === "function") storageStatus.onPersistBlocked(reason);
+}
+
+/*
+  所有会写入数据的用户操作都经由这里：
+  1. 只读保护或存储不可用时直接拒绝，并通过 onPersistBlocked 告知用户
+  2. 其他标签页写入过更新的数据时先同步，再在最新数据上修改（避免用过期副本覆盖）
+  3. mutate() 返回 false 表示放弃本次修改（例如会话已在其他标签页结束），不写入
+  4. 写入失败时把内存回滚到修改前，界面不会显示未保存的结果
+  返回 true 才代表已保存，调用方只在此时给出成功提示。
+*/
+function persistChange(mutate, options = {}) {
+  if (!canPersist()) {
+    notifyPersistBlocked(storageStatus.available ? "readonly" : "unavailable");
+    return false;
+  }
+
+  syncIfChanged();
+  if (!canPersist()) {
+    notifyPersistBlocked("readonly");
+    return false;
+  }
+
+  const before = JSON.stringify(appData);
+  if (mutate() === false) {
+    appData = migrateData(JSON.parse(before));
+    return false;
+  }
+
+  if (saveData({ quiet: true })) return true;
+
+  appData = migrateData(JSON.parse(before));
+  storageStatus.writeError = false;
+  if (!options.quiet) notifyPersistBlocked("write-failed");
+  return false;
+}
+
+/*
+  外观偏好：只读保护时仍在本页生效（不影响数据安全），但不写入，并提示一次。
+*/
+let preferenceNoticeShown = false;
+function persistPreference(mutate) {
+  if (canPersist()) return persistChange(mutate);
+
+  mutate();
+  if (!preferenceNoticeShown) {
+    preferenceNoticeShown = true;
+    notifyPersistBlocked("readonly-preference");
+  }
+  return false;
 }
 
 /* 整体替换数据（导入、清空）：写入失败时回滚内存，本机存储保持原样 */
@@ -513,8 +675,33 @@ function parseBackupText(text) {
 /* ---------- 多标签页 ---------- */
 
 /*
-  用本机存储中的最新数据替换内存副本，供其他标签页写入后同步、以及结算前确认会话仍有效。
-  返回 "synced" | "skipped" | "legacy" | "unsupported"。
+  标签页标识存于 sessionStorage：刷新后不变，各标签页互不相同（「复制标签页」会复制 sessionStorage，两页同号）。
+  专注会话记录入座 / 继续时的标签页，计时到点后由它结算；其他标签页只在宽限期后代为结算。
+*/
+const TAB_ID_KEY = "starryStudyRoom_tab";
+const FOCUS_SETTLE_GRACE_MS = 5000;
+const TAB_ID = (function() {
+  try {
+    const existing = sessionStorage.getItem(TAB_ID_KEY);
+    if (existing && /^[\w-]{1,48}$/.test(existing)) return existing;
+    const id = "t" + createId();
+    sessionStorage.setItem(TAB_ID_KEY, id);
+    return id;
+  } catch (error) {
+    return "t" + createId();
+  }
+})();
+
+/* 到点后是否由本页结算：本页入座、会话无归属，或归属页超过宽限期仍未结算（已关闭或被冻结） */
+function shouldSettleHere(session, now = Date.now()) {
+  if (!session || session.status !== "running") return false;
+  if (!session.ownerTab || session.ownerTab === TAB_ID) return true;
+  return now >= session.endsAt + FOCUS_SETTLE_GRACE_MS;
+}
+
+/*
+  用本机存储中的最新数据替换内存副本，供其他标签页写入后同步、以及写入前确认基于最新数据。
+  返回 "synced" | "skipped" | "unsupported"。
   写入失败期间跳过同步，以免丢掉尚未写入的内存修改。
 */
 function syncFromStorage() {
@@ -523,44 +710,30 @@ function syncFromStorage() {
   const storage = getStorage();
   if (!storage) return "skipped";
 
-  let saved = null;
-  try {
-    saved = storage.getItem(STORAGE_KEY);
-  } catch (error) {
-    return "skipped";
-  }
+  const saved = readKey(storage, STORAGE_KEY);
   if (!saved) return "skipped";
 
-  let parsed;
-  try {
-    parsed = JSON.parse(saved);
-  } catch (error) {
-    return "skipped";
-  }
-  if (!isPlainObject(parsed)) return "skipped";
+  const parsed = parseObject(saved);
+  if (!parsed) return "skipped";
 
-  const schema = classifySchema(parsed);
-  if (schema === "unsupported") {
+  if (classifySchema(parsed) === "unsupported") {
     setStorageIssue("external-future", { raw: saved, lock: true });
     return "unsupported";
   }
-  if (schema === "legacy") {
-    // 旧版页面写入的 v1 数据会丢掉按日历史，立即用本页的 v2 数据恢复
-    saveData();
-    setStorageIssue("external-legacy", { raw: saved });
-    return "legacy";
-  }
 
   appData = migrateData(parsed);
+  lastKnownRaw = saved;
   return "synced";
 }
 
-/* 结算前调用：只有存储中的进行中会话仍是这一轮时才可结算，防止多个标签页重复发放奖励 */
-function claimFocusSession(sessionId) {
-  syncFromStorage();
-  return Boolean(appData.activeFocus && appData.activeFocus.id === sessionId);
+/* 只有存储中的原文与本页最后一次读写的不同（其他标签页写过）时才同步 */
+function syncIfChanged() {
+  const storage = getStorage();
+  if (!storage) return "skipped";
+  const saved = readKey(storage, STORAGE_KEY);
+  if (saved === lastKnownRaw) return "unchanged";
+  return syncFromStorage();
 }
-
 let appData = loadData();
 
 /* ---------- 刷新调度 ---------- */
@@ -587,11 +760,6 @@ function refreshAll() {
   if (renderQueued) return;
   renderQueued = true;
   queueMicrotask(renderAllNow);
-}
-
-function commit() {
-  saveData();
-  refreshAll();
 }
 
 /* ---------- 读取助手 ---------- */

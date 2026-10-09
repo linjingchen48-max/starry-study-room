@@ -41,6 +41,13 @@ function openSettings() {
 }
 
 function exportAppData() {
+  // 只读保护时内存中的数据可能是降级解析的结果，导出本机原文才不会丢信息
+  if (storageStatus.writeLocked && storageStatus.rawSnapshot !== null) {
+    downloadRawSnapshot();
+    showToast("当前为只读保护状态，已导出本机原始数据（未经转换）。", { type: "success", duration: 6000 });
+    return;
+  }
+
   const now = new Date();
   const stamp =
     dateKey(0, now).replace(/-/g, "") +
@@ -85,8 +92,23 @@ function readFileAsText(file) {
 }
 
 function getWriteBlockedMessage() {
+  if (!storageStatus.available) return "当前浏览器无法使用本机存储。";
   return storageStatus.writeLocked ? "本机数据当前为只读保护状态，请先按页面顶部提示处理。" : "";
 }
+
+const PERSIST_BLOCKED_MESSAGES = {
+  readonly: "只读保护中，此操作未保存。请先按页面顶部提示处理。",
+  unavailable: "当前浏览器无法使用本机存储，此操作未保存。",
+  "write-failed": "保存失败：无法写入本机存储（可能空间不足）。此操作未生效，请先导出备份。",
+  "readonly-preference": "只读保护中：外观调整仅在本页生效，不会保存。"
+};
+
+storageStatus.onPersistBlocked = function(reason) {
+  showToast(PERSIST_BLOCKED_MESSAGES[reason] || PERSIST_BLOCKED_MESSAGES.readonly, {
+    type: reason === "readonly-preference" ? undefined : "error",
+    duration: 6000
+  });
+};
 
 async function importAppDataFromFile(file) {
   const blocked = getWriteBlockedMessage();
@@ -203,10 +225,15 @@ const STORAGE_ALERTS = {
     text: "为避免新旧版本互相覆盖，本页已停止保存。请刷新本页以使用最新版本。",
     actions: ["reload"]
   },
-  "external-legacy": {
-    title: "检测到旧版页面在写入数据",
-    text: "另一个标签页仍在运行旧版本，它的写入会丢失按日历史。本页已用最新数据恢复，请关闭或刷新旧版标签页。",
-    actions: ["dismiss"]
+  "legacy-corrupt": {
+    title: "旧版数据无法读取",
+    text: "升级时发现旧版本留下的数据已损坏，无法迁移。原数据仍原样保留在本机，未被改动；当前以空白档案运行。可下载原始数据，修复后再导入。",
+    actions: ["download-raw", "acknowledge"]
+  },
+  "legacy-changed": {
+    title: "旧版页面写入了新的数据",
+    text: "有仍在运行旧版本的标签页（或旧版桌面应用）在升级后又保存了记录。这些记录与当前数据分开保存，当前数据未受影响，也不会被自动合并。请关闭旧版页面；如需找回那些记录，可下载旧版数据查看或导入。",
+    actions: ["download-raw", "acknowledge"]
   }
 };
 
@@ -214,6 +241,7 @@ const STORAGE_ALERT_ACTIONS = {
   "download-raw": { label: "下载原始数据", cls: "btn btn-secondary btn-sm" },
   release: { label: "放弃原始数据并重新开始", cls: "btn btn-danger-quiet btn-sm" },
   reload: { label: "刷新页面", cls: "btn btn-primary btn-sm" },
+  acknowledge: { label: "知道了", cls: "btn btn-quiet btn-sm" },
   dismiss: { label: "知道了", cls: "btn btn-quiet btn-sm" }
 };
 
@@ -240,11 +268,13 @@ function downloadRawSnapshot() {
   const raw = storageStatus.rawSnapshot;
   if (raw === null) return;
 
-  const blob = new Blob([raw], { type: "text/plain" });
+  // 可解析的原文存为 .json，便于直接用「导入备份」恢复
+  const isJson = parseObject(raw) !== null;
+  const blob = new Blob([raw], { type: isJson ? "application/json" : "text/plain" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "starry-study-room-raw-" + Date.now() + ".txt";
+  link.download = "starry-study-room-raw-" + Date.now() + (isJson ? ".json" : ".txt");
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -280,6 +310,10 @@ document.getElementById("storageAlertActions").addEventListener("click", functio
     storageStatus.issue = null;
     renderStorageAlert();
   }
+  if (action === "acknowledge") {
+    acknowledgeLegacyChanges();
+    renderStorageAlert();
+  }
 });
 
 storageStatus.onIssue = renderStorageAlert;
@@ -294,17 +328,22 @@ document.getElementById("settingsDialog").addEventListener("click", function(eve
 
 document.querySelectorAll('input[name="themePref"]').forEach(function(input) {
   input.addEventListener("change", function() {
-    appData.settings.theme = input.value;
+    const value = input.value;
+    persistPreference(function() {
+      appData.settings.theme = value;
+    });
     resetFocusNightSuppression();
-    saveData();
     applyTheme();
+    renderSettings();
   });
 });
 
 document.getElementById("focusNightSwitch").addEventListener("click", function(event) {
-  appData.settings.focusNight = !appData.settings.focusNight;
+  const next = !appData.settings.focusNight;
+  persistPreference(function() {
+    appData.settings.focusNight = next;
+  });
   event.currentTarget.setAttribute("aria-checked", String(appData.settings.focusNight));
-  saveData();
   applyTheme();
 });
 

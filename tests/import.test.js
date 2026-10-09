@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { loadApp, loadPage, createMemoryStorage, failingStorage, flush } = require("./helpers.js");
 
-const KEY = "starryStudyRoom_v1";
+const KEY = "starryStudyRoom_v2";
 
 function parse(text) {
   return loadApp().run(`parseBackupText(${JSON.stringify(text)})`);

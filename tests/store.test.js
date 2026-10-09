@@ -96,11 +96,11 @@ test("进行中的专注可以保存与恢复", () => {
 });
 
 test("损坏的本地数据会被另存，不会被静默覆盖", () => {
-  const storage = createMemoryStorage({ starryStudyRoom_v1: "{not json" });
+  const storage = createMemoryStorage({ starryStudyRoom_v2: "{not json" });
   const app = loadApp({ storage });
   assert.equal(app.run("storageStatus.issue"), "corrupt");
   assert.equal(app.run("storageStatus.writeLocked"), false);
-  const backups = Object.keys(storage.data).filter((k) => k.startsWith("starryStudyRoom_v1_corrupt_"));
+  const backups = Object.keys(storage.data).filter((k) => k.startsWith("starryStudyRoom_v2_corrupt_"));
   assert.equal(backups.length, 1);
   assert.equal(storage.data[backups[0]], "{not json");
 });

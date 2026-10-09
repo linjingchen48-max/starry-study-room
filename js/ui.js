@@ -170,8 +170,9 @@ function toggleTheme() {
   if (isFocusNightActive() && target === "day") {
     focusNightSuppressed = true;
   } else {
-    appData.settings.theme = target;
-    saveData();
+    persistPreference(function() {
+      appData.settings.theme = target;
+    });
   }
 
   applyTheme();

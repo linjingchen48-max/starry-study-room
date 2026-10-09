@@ -125,22 +125,26 @@ function addTask(event) {
   setFieldError(taskInput, "");
 
   const task = normalizeTask({ name: name, goal: goalInput.value.trim(), done: false });
-  ensureTasksFor().push(task);
+  const saved = persistChange(function() {
+    ensureTasksFor().push(task);
+  });
+  // 未保存时保留输入内容，用户可稍后重试
+  if (!saved) return;
 
   taskInput.value = "";
   goalInput.value = "";
   taskInput.focus();
 
-  saveData();
   renderAllNow();
   flashElement(document.querySelector('[data-task-id="' + task.id + '"]'));
 }
 
 function toggleTask(id) {
-  const task = findTodayTask(id);
-  if (!task) return;
-  task.done = !task.done;
-  saveData();
+  persistChange(function() {
+    const task = findTodayTask(id);
+    if (!task) return false;
+    task.done = !task.done;
+  });
   renderAllNow();
 
   const check = document.querySelector('[data-task-id="' + id + '"] .check');
@@ -148,20 +152,30 @@ function toggleTask(id) {
 }
 
 function deleteTask(id) {
-  const tasks = ensureTasksFor();
-  const index = tasks.findIndex(function(task) {
-    return task.id === id;
-  });
-  if (index === -1) return;
+  const key = dateKey();
+  let removed = null;
+  let index = -1;
 
-  const removed = tasks.splice(index, 1)[0];
-  commit();
+  const saved = persistChange(function() {
+    const tasks = ensureTasksFor(key);
+    index = tasks.findIndex(function(task) {
+      return task.id === id;
+    });
+    if (index === -1) return false;
+    removed = tasks.splice(index, 1)[0];
+  });
+  refreshAll();
+  if (!saved) return;
 
   showToast("已删除「" + removed.name + "」", {
     actionLabel: "撤销",
     onAction: function() {
-      ensureTasksFor().splice(Math.min(index, ensureTasksFor().length), 0, removed);
-      commit();
+      const restored = persistChange(function() {
+        const tasks = ensureTasksFor(key);
+        if (tasks.some(function(task) { return task.id === removed.id; })) return false;
+        tasks.splice(Math.min(index, tasks.length), 0, removed);
+      });
+      if (restored) refreshAll();
     }
   });
 }
@@ -210,31 +224,40 @@ function renderCarryOver() {
 
 function acceptCarryOver() {
   const todayKey = dateKey();
-  const carry = findCarryOver(todayKey);
-  if (!carry) return;
+  let moved = 0;
 
-  const ids = carry.tasks.map(function(task) {
-    return task.id;
+  const saved = persistChange(function() {
+    // 在最新数据上重新查找，避免与其他标签页重复移入
+    const carry = findCarryOver(todayKey);
+    if (!carry) return false;
+
+    const ids = carry.tasks.map(function(task) {
+      return task.id;
+    });
+
+    appData.tasksByDay[carry.key] = appData.tasksByDay[carry.key].filter(function(task) {
+      return !ids.includes(task.id);
+    });
+    if (!appData.tasksByDay[carry.key].length) delete appData.tasksByDay[carry.key];
+
+    const today = ensureTasksFor(todayKey);
+    carry.tasks.forEach(function(task) {
+      today.push(task);
+    });
+
+    appData.carryOverHandled[todayKey] = true;
+    moved = carry.tasks.length;
   });
-
-  appData.tasksByDay[carry.key] = appData.tasksByDay[carry.key].filter(function(task) {
-    return !ids.includes(task.id);
-  });
-  if (!appData.tasksByDay[carry.key].length) delete appData.tasksByDay[carry.key];
-
-  const today = ensureTasksFor(todayKey);
-  carry.tasks.forEach(function(task) {
-    today.push(task);
-  });
-
-  appData.carryOverHandled[todayKey] = true;
-  commit();
-  showToast("已移入 " + carry.tasks.length + " 项到今日御案。", { type: "success" });
+  refreshAll();
+  if (saved) showToast("已移入 " + moved + " 项到今日御案。", { type: "success" });
 }
 
 function dismissCarryOver() {
-  appData.carryOverHandled[dateKey()] = true;
-  commit();
+  const key = dateKey();
+  persistChange(function() {
+    appData.carryOverHandled[key] = true;
+  });
+  refreshAll();
 }
 
 /* ---------- 奏对 ---------- */
@@ -328,15 +351,18 @@ function saveReview(event) {
   }
 
   const key = dateKey();
-  const today = ensureDay(key);
-  entry.comment = generateRoyalComment(entry, today);
-  entry.updatedAt = new Date().toISOString();
+  const saved = persistChange(function() {
+    const today = ensureDay(key);
+    entry.comment = generateRoyalComment(entry, today);
+    entry.updatedAt = new Date().toISOString();
+    appData.reviews[key] = entry;
+    today.review = true;
+  });
+  // 未保存时保持编辑状态，填写内容不丢
+  if (!saved) return;
 
-  appData.reviews[key] = entry;
-  today.review = true;
   reviewEditing = false;
-
-  commit();
+  refreshAll();
   playSealStamp("御批");
   showToast("奏对已呈上，御批已生成。", { type: "seal" });
 }

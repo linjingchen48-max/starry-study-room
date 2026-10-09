@@ -47,6 +47,7 @@ function loadApp(options = {}) {
   const context = vm.createContext({
     console: { error() {}, warn() {}, log: console.log },
     localStorage: storage,
+    sessionStorage: options.sessionStorage || createMemoryStorage(),
     queueMicrotask: queueMicrotask,
     Date: Date,
     Math: Math
@@ -120,6 +121,7 @@ function loadPage(files, options = {}) {
   const context = vm.createContext({
     console: { error() {}, warn() {}, log: console.log },
     localStorage: storage,
+    sessionStorage: options.sessionStorage || createMemoryStorage(),
     queueMicrotask: queueMicrotask,
     setTimeout: setTimeout,
     clearTimeout: clearTimeout,
@@ -162,6 +164,10 @@ function loadPage(files, options = {}) {
     function resetFocusNightSuppression() {}
     function baseDocumentTitle() { return ""; }
     function playSealStamp() {}
+    function setFieldError() {}
+    function flashElement() {}
+    function navigate() {}
+    function emptyState() { return ""; }
   `;
   context.__toasts = toasts;
   context.__state = state;

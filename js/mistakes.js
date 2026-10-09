@@ -151,61 +151,79 @@ function saveMistake(event) {
     correct: document.getElementById("mistakeCorrect").value
   });
 
-  appData.mistakes.unshift(item);
+  const saved = persistChange(function() {
+    appData.mistakes.unshift(item);
+  });
+  // 未保存时保留表单内容，用户可稍后重试
+  if (!saved) return;
+
   event.target.reset();
 
   if (mistakeView.filter !== "all" && mistakeView.filter !== "pending" && mistakeView.filter !== item.reason) {
     mistakeView.filter = "all";
   }
 
-  saveData();
   renderAllNow();
   flashElement(document.querySelector('[data-mistake-id="' + item.id + '"]'));
   showToast("已收入错题阁。", { type: "success" });
 }
 
 function toggleMistakeReview(id) {
-  const item = appData.mistakes.find(function(m) {
-    return m.id === id;
+  let outcome = "";
+  let before = 0;
+
+  const saved = persistChange(function() {
+    const item = appData.mistakes.find(function(m) {
+      return m.id === id;
+    });
+    if (!item) return false;
+
+    if (item.reviewed) {
+      item.reviewed = false;
+      outcome = "unmarked";
+      return;
+    }
+
+    item.reviewed = true;
+    if (!item.starRewarded) {
+      before = toCount(appData.stars);
+      appData.stars = before + 1;
+      item.starRewarded = true;
+      outcome = "star";
+      return;
+    }
+    outcome = "marked";
   });
-  if (!item) return;
+  refreshAll();
+  if (!saved) return;
 
-  if (item.reviewed) {
-    item.reviewed = false;
-    commit();
-    showToast("已取消重练标记。已获得的星辰不会扣除。");
-    return;
-  }
-
-  item.reviewed = true;
-
-  if (!item.starRewarded) {
-    const before = toCount(appData.stars);
-    appData.stars = before + 1;
-    item.starRewarded = true;
-    commit();
-    showToast("错题已重练，点亮一颗星辰。星辰 " + before + " → " + appData.stars, { type: "star" });
-    return;
-  }
-
-  commit();
-  showToast("已标记重练。此题的星辰此前已点亮过。", { type: "success" });
+  if (outcome === "unmarked") showToast("已取消重练标记。已获得的星辰不会扣除。");
+  if (outcome === "star") showToast("错题已重练，点亮一颗星辰。星辰 " + before + " → " + appData.stars, { type: "star" });
+  if (outcome === "marked") showToast("已标记重练。此题的星辰此前已点亮过。", { type: "success" });
 }
 
 function deleteMistake(id) {
-  const index = appData.mistakes.findIndex(function(m) {
-    return m.id === id;
-  });
-  if (index === -1) return;
+  let index = -1;
+  let removed = null;
 
-  const removed = appData.mistakes.splice(index, 1)[0];
-  commit();
+  const saved = persistChange(function() {
+    index = appData.mistakes.findIndex(function(m) {
+      return m.id === id;
+    });
+    if (index === -1) return false;
+    removed = appData.mistakes.splice(index, 1)[0];
+  });
+  refreshAll();
+  if (!saved) return;
 
   showToast("已删除「" + removed.title + "」", {
     actionLabel: "撤销",
     onAction: function() {
-      appData.mistakes.splice(Math.min(index, appData.mistakes.length), 0, removed);
-      commit();
+      const restored = persistChange(function() {
+        if (appData.mistakes.some(function(m) { return m.id === removed.id; })) return false;
+        appData.mistakes.splice(Math.min(index, appData.mistakes.length), 0, removed);
+      });
+      if (restored) refreshAll();
     }
   });
 }

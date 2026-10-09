@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { loadApp, createMemoryStorage, failingStorage } = require("./helpers.js");
 
-const KEY = "starryStudyRoom_v1";
+const KEY = "starryStudyRoom_v2";
 
 test("损坏数据：另存成功时可继续使用，原文完整保留在备份键", () => {
   const storage = createMemoryStorage({ [KEY]: "{broken" });
@@ -25,7 +25,7 @@ test("损坏数据：另存失败时锁定写入，任何保存都不会覆盖�
   assert.equal(app.run("storageStatus.rawSnapshot"), "{broken");
 
   assert.equal(app.run("saveData()"), false);
-  app.run("appData.stars = 3; commit();");
+  assert.equal(app.run("persistChange(function() { appData.stars = 3; })"), false);
   assert.equal(app.run(`replaceAppData(createDefaultData())`), false);
   assert.equal(storage.getItem(KEY), "{broken");
 });
@@ -75,7 +75,7 @@ test("未来 schemaVersion：只读加载，保存不会降级覆盖未知字段
   assert.equal(app.run("storageStatus.issue"), "unsupported");
   assert.equal(app.run("storageStatus.writeLocked"), true);
   assert.equal(app.run("appData.stars"), 5);
-  app.run("appData.stars = 6; commit();");
+  assert.equal(app.run("persistChange(function() { appData.stars = 6; })"), false);
   assert.equal(app.run("saveData()"), false);
   assert.equal(storage.getItem(KEY), raw);
 });
@@ -89,18 +89,6 @@ test("无法识别的 schemaVersion（字符串、0、小数）同样只读", ()
     app.run("saveData()");
     assert.equal(storage.getItem(KEY), raw, version);
   });
-});
-
-test("v1 数据升级前保留一份原文，且之后不会被覆盖", () => {
-  const v1 = JSON.stringify({ stars: 2, tasks: [{ name: "旧任务" }] });
-  const storage = createMemoryStorage({ [KEY]: v1 });
-  const app = loadApp({ storage });
-  assert.equal(storage.getItem("starryStudyRoom_v1_pre_v2_backup"), v1);
-  app.run("saveData()");
-
-  storage.setItem(KEY, JSON.stringify({ stars: 9 }));
-  loadApp({ storage });
-  assert.equal(storage.getItem("starryStudyRoom_v1_pre_v2_backup"), v1);
 });
 
 test("存储写入失败：saveData 返回 false，只提示一次，恢复后清除错误状态", () => {
@@ -144,19 +132,6 @@ test("多标签页：其他标签页写入的数据会被同步", () => {
   assert.equal(b.run("appData.stars"), 4);
 });
 
-test("多标签页：旧版页面写入的 v1 数据会立即被 v2 数据恢复", () => {
-  const storage = createMemoryStorage();
-  const app = loadApp({ storage });
-  app.run(`ensureTasksFor("2026-01-01").push(normalizeTask({ name: "历史任务" })); saveData();`);
-
-  storage.setItem(KEY, JSON.stringify({ stars: 1, tasks: [] }));
-  assert.equal(app.run("syncFromStorage()"), "legacy");
-  assert.equal(app.run("storageStatus.issue"), "external-legacy");
-  const stored = JSON.parse(storage.getItem(KEY));
-  assert.equal(stored.schemaVersion, 2);
-  assert.equal(stored.tasksByDay["2026-01-01"][0].name, "历史任务");
-});
-
 test("多标签页：其他标签页写入更新版本数据后，本页停止写入", () => {
   const storage = createMemoryStorage();
   const app = loadApp({ storage });
@@ -170,7 +145,7 @@ test("多标签页：其他标签页写入更新版本数据后，本页停止�
 });
 
 test("多标签页：写入失败期间不从存储同步，避免丢掉尚未写入的修改", () => {
-  const storage = failingStorage(createMemoryStorage(), (key) => key === "starryStudyRoom_v1");
+  const storage = failingStorage(createMemoryStorage(), (key) => key === KEY);
   const app = loadApp({ storage });
   app.run("appData.stars = 5; saveData();");
   assert.equal(app.run("syncFromStorage()"), "skipped");

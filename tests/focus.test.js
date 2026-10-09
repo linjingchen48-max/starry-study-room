@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { loadApp, loadPage, createMemoryStorage, createSharedLocks, flush } = require("./helpers.js");
 
-const KEY = "starryStudyRoom_v1";
+const KEY = "starryStudyRoom_v2";
 
 function dayKey(offset = 0) {
   return loadApp().run(`dateKey(${offset})`);
@@ -191,4 +191,89 @@ test("新开的专注会记录会话 id 与当天日期", () => {
   const session = page.run("appData.activeFocus");
   assert.match(session.id, /^[\w-]+$/);
   assert.equal(session.dayKey, dayKey());
+});
+
+/* ---------- 无 Web Locks 时的退化策略：结算归属 ---------- */
+
+function seedOwnedSession(storage, ownerTab, endedAgoMs) {
+  const endsAt = Date.now() - endedAgoMs;
+  loadApp({ storage }).run(`
+    appData.stars = 10;
+    appData.activeFocus = normalizeActiveFocus({ id: "own1", duration: 25, status: "running", startedAt: ${endsAt - 25 * 60000}, endsAt: ${endsAt}, ownerTab: "${ownerTab}" });
+    saveData();
+  `);
+}
+
+test("结算归属：入座的标签页到点立即结算", async () => {
+  const storage = createMemoryStorage();
+  seedOwnedSession(storage, "tA", 100);
+  const owner = loadPage(["js/focus.js"], { storage, sessionStorage: createMemoryStorage({ starryStudyRoom_tab: "tA" }) });
+  owner.run("completeFocus()");
+  await flush();
+  assert.equal(JSON.parse(storage.getItem(KEY)).stars, 11);
+});
+
+test("结算归属：其他标签页在宽限期内不抢先结算，宽限期过后代为结算", async () => {
+  const storage = createMemoryStorage();
+  seedOwnedSession(storage, "tA", 1000);
+  const other = loadPage(["js/focus.js"], { storage, sessionStorage: createMemoryStorage({ starryStudyRoom_tab: "tB" }) });
+  other.run("completeFocus()");
+  await flush();
+  assert.equal(JSON.parse(storage.getItem(KEY)).stars, 10);
+  assert.ok(JSON.parse(storage.getItem(KEY)).activeFocus);
+
+  const storage2 = createMemoryStorage();
+  seedOwnedSession(storage2, "tA", 6000);
+  const late = loadPage(["js/focus.js"], { storage: storage2, sessionStorage: createMemoryStorage({ starryStudyRoom_tab: "tB" }) });
+  late.run("completeFocus()");
+  await flush();
+  assert.equal(JSON.parse(storage2.getItem(KEY)).stars, 11);
+});
+
+test("结算归属：无 Web Locks 时两个标签页同时到点，只有入座页结算", async () => {
+  const storage = createMemoryStorage();
+  seedOwnedSession(storage, "tA", 50);
+  const a = loadPage(["js/focus.js"], { storage, sessionStorage: createMemoryStorage({ starryStudyRoom_tab: "tA" }) });
+  const b = loadPage(["js/focus.js"], { storage, sessionStorage: createMemoryStorage({ starryStudyRoom_tab: "tB" }) });
+  b.run("completeFocus()");
+  a.run("completeFocus()");
+  await flush();
+  const data = JSON.parse(storage.getItem(KEY));
+  assert.equal(data.stars, 11);
+  assert.equal(data.focusSessions, 1);
+  assert.equal(b.toasts.filter((t) => t.options.type === "star").length, 0);
+});
+
+test("入座、继续时记录本标签页为结算归属", () => {
+  const session = createMemoryStorage({ starryStudyRoom_tab: "tMine" });
+  const page = loadPage(["js/focus.js"], { storage: createMemoryStorage(), sessionStorage: session });
+  page.run("startFocus()");
+  assert.equal(page.run("appData.activeFocus.ownerTab"), "tMine");
+  page.run("pauseFocus(); appData.activeFocus.ownerTab = 'tOther'; saveData(); resumeFocus();");
+  assert.equal(page.run("appData.activeFocus.ownerTab"), "tMine");
+});
+
+test("过期状态：会话已在其他标签页结束时，暂停 / 重置不会把它写回", async () => {
+  const storage = createMemoryStorage();
+  const stale = loadPage(["js/focus.js"], { storage });
+  stale.run("startFocus()");
+
+  const other = loadApp({ storage });
+  other.run("appData.activeFocus = null; appData.totalMinutes = 25; saveData();");
+
+  stale.run("pauseFocus()");
+  assert.equal(JSON.parse(storage.getItem(KEY)).activeFocus, null);
+  assert.equal(stale.run("appData.activeFocus"), null);
+  assert.equal(JSON.parse(storage.getItem(KEY)).totalMinutes, 25);
+});
+
+test("入座：其他标签页已入座时不新开一轮，改为显示那一轮", () => {
+  const storage = createMemoryStorage();
+  const a = loadPage(["js/focus.js"], { storage });
+  const b = loadPage(["js/focus.js"], { storage });
+  a.run("startFocus()");
+  const id = a.run("appData.activeFocus.id");
+  b.run("startFocus()");
+  assert.equal(b.run("appData.activeFocus.id"), id);
+  assert.equal(JSON.parse(storage.getItem(KEY)).activeFocus.id, id);
 });

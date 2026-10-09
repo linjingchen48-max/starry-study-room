@@ -37,25 +37,30 @@ function renderPractice() {
 function pickPractice(type) {
   if (!PRACTICE_DIMENSIONS[type]) return;
 
-  appData.currentPracticeType = type;
-  appData.currentPractice = drawPractice(type, appData.currentPractice);
-  appData.currentPracticeDone = false;
-
-  saveData();
+  const saved = persistChange(function() {
+    appData.currentPracticeType = type;
+    appData.currentPractice = drawPractice(type, appData.currentPractice);
+    appData.currentPracticeDone = false;
+  });
   renderAllNow();
-  flashElement(document.getElementById("practiceCard"));
+  if (saved) flashElement(document.getElementById("practiceCard"));
 }
 
 function completePractice() {
   if (appData.currentPracticeDone) return;
 
-  const type = appData.currentPracticeType;
-  appData.seals += 1;
-  appData.practiceStats[type] = toCount(appData.practiceStats[type]) + 1;
-  ensureDay().practice += 1;
-  appData.currentPracticeDone = true;
+  const saved = persistChange(function() {
+    // 其他标签页可能已为同一道题领过印
+    if (appData.currentPracticeDone) return false;
+    const type = appData.currentPracticeType;
+    appData.seals += 1;
+    appData.practiceStats[type] = toCount(appData.practiceStats[type]) + 1;
+    ensureDay().practice += 1;
+    appData.currentPracticeDone = true;
+  });
+  refreshAll();
+  if (!saved) return;
 
-  commit();
   playSealStamp("御印");
   showToast("修炼完成，获得一枚御印。", { type: "seal" });
 }

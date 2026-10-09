@@ -20,17 +20,25 @@ function getSelectedDuration() {
   return appData.activeFocus ? appData.activeFocus.duration : appData.settings.focusDuration;
 }
 
+function getSessionRemainingMs(session, now = Date.now()) {
+  if (session.status === "running") return Math.max(0, session.endsAt - now);
+  return session.remainingMs;
+}
+
+function getSessionElapsedMinutes(session, now = Date.now()) {
+  return Math.floor((session.duration * 60000 - getSessionRemainingMs(session, now)) / 60000);
+}
+
 function getFocusRemainingMs(now = Date.now()) {
   const session = appData.activeFocus;
   if (!session) return appData.settings.focusDuration * 60000;
-  if (session.status === "running") return Math.max(0, session.endsAt - now);
-  return session.remainingMs;
+  return getSessionRemainingMs(session, now);
 }
 
 function getFocusElapsedMinutes(now = Date.now()) {
   const session = appData.activeFocus;
   if (!session) return 0;
-  return Math.floor((session.duration * 60000 - getFocusRemainingMs(now)) / 60000);
+  return getSessionElapsedMinutes(session, now);
 }
 
 function formatClock(ms) {
@@ -222,51 +230,76 @@ function setFocusTarget(id) {
 
 function startFocus() {
   const now = Date.now();
-  const duration = appData.settings.focusDuration;
+  const ok = persistChange(function() {
+    // 其他标签页可能已入座：同步后发现已有会话则放弃，改为显示那一轮
+    if (appData.activeFocus) return false;
+    const duration = appData.settings.focusDuration;
+    appData.activeFocus = {
+      id: createId(),
+      dayKey: dateKey(),
+      duration: duration,
+      status: "running",
+      startedAt: now,
+      endsAt: now + duration * 60000,
+      remainingMs: duration * 60000,
+      taskId: focusTargetId,
+      ownerTab: TAB_ID
+    };
+  });
 
-  appData.activeFocus = {
-    id: createId(),
-    dayKey: dateKey(),
-    duration: duration,
-    status: "running",
-    startedAt: now,
-    endsAt: now + duration * 60000,
-    remainingMs: duration * 60000,
-    taskId: focusTargetId
-  };
-
-  focusMessage = "";
-  resetFocusNightSuppression();
-  saveData();
+  if (ok) {
+    focusMessage = "";
+    resetFocusNightSuppression();
+  }
   applyTheme();
-  startTicker();
-  requestWakeLock();
+  restoreFocusSession();
   refreshAll();
+}
+
+/*
+  修改进行中的会话前，先确认存储中的会话仍是本页看到的这一轮；
+  已被其他标签页结束或替换时不写入，并按「已在其他标签页结束」处理。
+*/
+function updateFocusSession(sessionId, change) {
+  let gone = false;
+  const ok = persistChange(function() {
+    const session = appData.activeFocus;
+    if (!session || session.id !== sessionId) {
+      gone = true;
+      return false;
+    }
+    return change(session);
+  });
+  if (gone) onFocusSessionGone();
+  return ok;
 }
 
 function pauseFocus() {
   const session = appData.activeFocus;
   if (!session || session.status !== "running") return;
 
-  session.remainingMs = Math.max(0, session.endsAt - Date.now());
-  session.endsAt = null;
-  session.status = "paused";
-
-  stopTicker();
-  releaseWakeLock();
-  commit();
+  updateFocusSession(session.id, function(current) {
+    if (current.status !== "running") return false;
+    current.remainingMs = Math.max(0, current.endsAt - Date.now());
+    current.endsAt = null;
+    current.status = "paused";
+  });
+  restoreFocusSession();
+  refreshAll();
 }
 
 function resumeFocus() {
   const session = appData.activeFocus;
   if (!session || session.status !== "paused") return;
 
-  session.endsAt = Date.now() + session.remainingMs;
-  session.status = "running";
-
-  startTicker();
-  requestWakeLock();
-  commit();
+  updateFocusSession(session.id, function(current) {
+    if (current.status !== "paused") return false;
+    current.endsAt = Date.now() + current.remainingMs;
+    current.status = "running";
+    current.ownerTab = TAB_ID;
+  });
+  restoreFocusSession();
+  refreshAll();
 }
 
 function toggleFocus() {
@@ -276,13 +309,12 @@ function toggleFocus() {
   else resumeFocus();
 }
 
-function endFocusSession(message) {
-  appData.activeFocus = null;
+/* 会话已从数据中移除并保存后，收起计时相关的界面状态 */
+function clearFocusUi(message) {
   focusMessage = message;
   stopTicker();
   releaseWakeLock();
   resetFocusNightSuppression();
-  saveData();
   applyTheme();
   refreshAll();
 }
@@ -302,16 +334,15 @@ async function resetFocus() {
     if (!ok) return;
   }
 
-  if (!claimFocusSession(sessionId)) {
-    onFocusSessionGone();
-    return;
-  }
-  endFocusSession("已重置。重新入座即可。");
+  const ok = updateFocusSession(sessionId, function() {
+    appData.activeFocus = null;
+  });
+  if (ok) clearFocusUi("已重置。重新入座即可。");
 }
 
 /*
-  结算在跨标签页锁内进行，并先从本机存储确认这一轮仍未被结算（claimFocusSession），
-  再基于存储中的最新会话计算，避免重复发放星辰或用过期状态结算。
+  结算在跨标签页锁内进行（不支持 Web Locks 时退化为直接执行）。
+  persistChange 会先读取存储中的最新会话：已被其他标签页结算则放弃，避免重复发放星辰或用过期状态结算。
 */
 function withFocusLock(fn) {
   const locks = typeof navigator !== "undefined" ? navigator.locks : null;
@@ -333,10 +364,38 @@ function onFocusSessionGone() {
   refreshAll();
 }
 
-function settleCompletedFocus(session, options) {
+/*
+  decide(current) 返回 { minutes, star } 表示按此结算，返回 null 表示暂不结算。
+  outcome："settled" 已结算并保存 | "gone" 会话已不存在 | "pending" 暂不结算 | "blocked" 只读或写入失败
+*/
+function settleFocus(sessionId, decide) {
+  let outcome = "blocked";
+  let settled = null;
+
+  const ok = persistChange(function() {
+    const current = appData.activeFocus;
+    if (!current || current.id !== sessionId) {
+      outcome = "gone";
+      return false;
+    }
+    const result = decide(current);
+    if (!result) {
+      outcome = "pending";
+      return false;
+    }
+    settled = { session: Object.assign({}, current), minutes: result.minutes, star: result.star };
+    creditFocus(current, result.minutes, result.star);
+    appData.activeFocus = null;
+    outcome = "settled";
+  });
+
+  if (outcome === "settled" && !ok) outcome = "blocked";
+  return { outcome: outcome, settled: settled };
+}
+
+function announceCompletedFocus(session, options) {
   const task = findSessionTask(session);
-  creditFocus(session, session.duration, true);
-  endFocusSession("本轮专注完成。星辰已点亮。");
+  clearFocusUi("本轮专注完成。星辰已点亮。");
 
   if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate([60, 80, 60]);
 
@@ -350,10 +409,12 @@ function settleCompletedFocus(session, options) {
       type: "star",
       actionLabel: "勾选「" + (task.name.length > 6 ? task.name.slice(0, 6) + "…" : task.name) + "」",
       onAction: function() {
-        const current = findSessionTask(binding);
-        if (!current || current.done) return;
-        current.done = true;
-        commit();
+        const saved = persistChange(function() {
+          const current = findSessionTask(binding);
+          if (!current || current.done) return false;
+          current.done = true;
+        });
+        if (saved) refreshAll();
       }
     });
   } else {
@@ -365,21 +426,39 @@ function completeFocus(options = {}) {
   const session = appData.activeFocus;
   if (!session || focusSettling) return;
 
+  // 只读保护时不结算、不发放星辰；停表以免反复尝试
+  if (!canPersist()) {
+    stopTicker();
+    releaseWakeLock();
+    return;
+  }
+  // 到点后由入座的标签页结算；其他标签页等宽限期过后才代为结算
+  if (!shouldSettleHere(session)) return;
+
   focusSettling = true;
   withFocusLock(function() {
-    if (!claimFocusSession(session.id)) {
+    const result = settleFocus(session.id, function(current) {
+      if (current.status !== "running" || getSessionRemainingMs(current) > 0) return null;
+      if (!shouldSettleHere(current)) return null;
+      return { minutes: current.duration, star: true };
+    });
+
+    if (result.outcome === "gone") {
       onFocusSessionGone();
-      return;
-    }
-    const current = appData.activeFocus;
-    if (current.status !== "running" || getFocusRemainingMs() > 0) {
-      restoreFocusSession();
+    } else if (result.outcome === "settled") {
+      announceCompletedFocus(result.settled.session, options);
+    } else if (result.outcome === "blocked") {
+      stopTicker();
+      releaseWakeLock();
       refreshAll();
-      return;
+    } else {
+      refreshAll();
     }
-    settleCompletedFocus(current, options);
   }).then(function() {
     focusSettling = false;
+    if (appData.activeFocus && appData.activeFocus.status === "running" && !focusTicker && canPersist()) {
+      restoreFocusSession();
+    }
   });
 }
 
@@ -404,20 +483,24 @@ async function finishFocusEarly() {
 
   focusSettling = true;
   await withFocusLock(function() {
-    if (!claimFocusSession(session.id)) {
-      onFocusSessionGone();
-      return;
-    }
-    const current = appData.activeFocus;
-    if (current.status === "running" && getFocusRemainingMs() <= 0) {
-      settleCompletedFocus(current, {});
-      return;
-    }
+    const result = settleFocus(session.id, function(current) {
+      if (current.status === "running" && getSessionRemainingMs(current) <= 0) {
+        return { minutes: current.duration, star: true };
+      }
+      const minutes = getSessionElapsedMinutes(current);
+      return minutes >= 1 ? { minutes: minutes, star: false } : null;
+    });
 
-    const minutes = getFocusElapsedMinutes();
-    creditFocus(current, minutes, false);
-    endFocusSession("已收卷，记录 " + minutes + " 分钟。");
-    showToast("已收卷，记录 " + minutes + " 分钟专注。", { type: "success" });
+    if (result.outcome === "gone") {
+      onFocusSessionGone();
+    } else if (result.outcome === "pending") {
+      showToast("未满 1 分钟，无可记录。若想重来，可直接重置。");
+    } else if (result.outcome === "settled" && result.settled.star) {
+      announceCompletedFocus(result.settled.session, {});
+    } else if (result.outcome === "settled") {
+      clearFocusUi("已收卷，记录 " + result.settled.minutes + " 分钟。");
+      showToast("已收卷，记录 " + result.settled.minutes + " 分钟专注。", { type: "success" });
+    }
   });
   focusSettling = false;
 }
@@ -446,18 +529,23 @@ function recordDistraction(type) {
   const info = DISTRACTIONS[type];
   if (!info) return;
 
-  appData.distractions[type] = toCount(appData.distractions[type]) + 1;
-  commit();
-
   const advice = document.getElementById("adviceText");
   advice.textContent = info.advice;
   document.getElementById("adviceBox").classList.add("is-active");
 
+  const saved = persistChange(function() {
+    appData.distractions[type] = toCount(appData.distractions[type]) + 1;
+  });
+  if (!saved) return;
+  refreshAll();
+
   showToast("已记入分心档案：" + info.label, {
     actionLabel: "撤销",
     onAction: function() {
-      appData.distractions[type] = Math.max(0, toCount(appData.distractions[type]) - 1);
-      commit();
+      const undone = persistChange(function() {
+        appData.distractions[type] = Math.max(0, toCount(appData.distractions[type]) - 1);
+      });
+      if (undone) refreshAll();
     }
   });
 }
@@ -471,9 +559,13 @@ document.getElementById("focusFinish").addEventListener("click", finishFocusEarl
 document.querySelectorAll('input[name="focusDuration"]').forEach(function(input) {
   input.addEventListener("change", function() {
     if (isFocusSessionActive()) return;
-    appData.settings.focusDuration = Number(input.value);
-    focusMessage = "已切换为 " + input.value + " 分钟专注。";
-    commit();
+    const value = Number(input.value);
+    const saved = persistChange(function() {
+      if (appData.activeFocus) return false;
+      appData.settings.focusDuration = value;
+    });
+    if (saved) focusMessage = "已切换为 " + value + " 分钟专注。";
+    refreshAll();
   });
 });
 

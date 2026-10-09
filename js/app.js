@@ -1,5 +1,5 @@
 /*
-  启动：路由、键盘快捷键、跨日刷新、存储异常提示、Service Worker 更新。
+  启动：路由、键盘快捷键、跨日刷新、多标签页同步、存储异常提示、Service Worker 更新。
 */
 
 storageStatus.onWriteError = function() {
@@ -70,14 +70,36 @@ document.addEventListener("keydown", function(event) {
 
 /* ---------- 多标签页 ---------- */
 
-window.addEventListener("storage", function(event) {
-  if (event.key !== STORAGE_KEY || event.storageArea !== localStorage) return;
-  if (syncFromStorage() !== "synced") return;
-
+function applySyncedData() {
   restoreFocusSession();
   applyTheme();
   renderAllNow();
+}
+
+window.addEventListener("storage", function(event) {
+  if (event.storageArea !== localStorage) return;
+  if (event.key === LEGACY_STORAGE_KEY) {
+    checkLegacyChanges();
+    return;
+  }
+  if (event.key === STORAGE_KEY && syncFromStorage() === "synced") applySyncedData();
 });
+
+/*
+  切回前台、从往返缓存恢复、从冻结中恢复时，storage 事件可能已错过：主动与存储对齐。
+*/
+function resyncWithStorage() {
+  if (syncIfChanged() === "synced") applySyncedData();
+  checkLegacyChanges();
+}
+
+document.addEventListener("visibilitychange", function() {
+  if (document.visibilityState === "visible") resyncWithStorage();
+});
+window.addEventListener("pageshow", function(event) {
+  if (event.persisted) resyncWithStorage();
+});
+document.addEventListener("resume", resyncWithStorage);
 
 /* ---------- 跨日 ---------- */
 
