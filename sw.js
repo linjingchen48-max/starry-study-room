@@ -9,7 +9,7 @@
   - 激活后删除其他版本缓存（含 v1 的 starry-study-room-v11）
 */
 
-const CACHE_NAME = "starry-study-room-v2.0.1-a0daba0a";
+const CACHE_NAME = "starry-study-room-v2.0.1-673589d1";
 
 const FILES_TO_CACHE = [
   "./",
