@@ -10,6 +10,7 @@ let focusTicker = null;
 let focusMessage = "";
 let focusTargetId = "";
 let wakeLock = null;
+let focusSettling = false;
 
 function isFocusSessionActive() {
   return Boolean(appData.activeFocus);
@@ -66,16 +67,19 @@ function buildDial() {
 /* ---------- 渲染 ---------- */
 
 function getFocusTargetTask() {
-  const id = appData.activeFocus ? appData.activeFocus.taskId : focusTargetId;
-  return id ? findTodayTask(id) : null;
+  if (appData.activeFocus) return findSessionTask(appData.activeFocus);
+  return focusTargetId ? findTodayTask(focusTargetId) : null;
 }
 
 function renderFocusTaskOptions() {
   const select = document.getElementById("focusTaskSelect");
   const hint = document.getElementById("focusTaskHint");
-  const tasks = getTasksFor().filter(function(task) {
+  let tasks = getTasksFor().filter(function(task) {
     return !task.done;
   });
+
+  const boundTask = appData.activeFocus ? findSessionTask(appData.activeFocus) : null;
+  if (boundTask && !tasks.includes(boundTask)) tasks = [boundTask].concat(tasks);
 
   if (!appData.activeFocus && focusTargetId && !tasks.some(function(task) {
     return task.id === focusTargetId;
@@ -221,6 +225,8 @@ function startFocus() {
   const duration = appData.settings.focusDuration;
 
   appData.activeFocus = {
+    id: createId(),
+    dayKey: dateKey(),
     duration: duration,
     status: "running",
     startedAt: now,
@@ -283,6 +289,7 @@ function endFocusSession(message) {
 
 async function resetFocus() {
   if (!appData.activeFocus) return;
+  const sessionId = appData.activeFocus.id;
 
   const elapsed = getFocusElapsedMinutes();
   if (elapsed >= 1) {
@@ -295,24 +302,40 @@ async function resetFocus() {
     if (!ok) return;
   }
 
+  if (!claimFocusSession(sessionId)) {
+    onFocusSessionGone();
+    return;
+  }
   endFocusSession("已重置。重新入座即可。");
 }
 
-function recordFocus(minutes, lightStar) {
-  const today = ensureDay();
-  appData.totalMinutes += minutes;
-  appData.focusSessions += 1;
-  today.minutes += minutes;
-  today.sessions += 1;
-  if (lightStar) appData.stars += 1;
+/*
+  结算在跨标签页锁内进行，并先从本机存储确认这一轮仍未被结算（claimFocusSession），
+  再基于存储中的最新会话计算，避免重复发放星辰或用过期状态结算。
+*/
+function withFocusLock(fn) {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : null;
+  const run = locks && typeof locks.request === "function"
+    ? locks.request("starry-study-room-focus", function() {
+        return fn();
+      })
+    : Promise.resolve().then(fn);
+
+  return run.catch(function(error) {
+    console.error("专注结算失败：", error);
+  });
 }
 
-function completeFocus(options = {}) {
-  const session = appData.activeFocus;
-  if (!session) return;
+function onFocusSessionGone() {
+  focusMessage = "本轮已在其他标签页结束。";
+  restoreFocusSession();
+  applyTheme();
+  refreshAll();
+}
 
-  const task = session.taskId ? findTodayTask(session.taskId) : null;
-  recordFocus(session.duration, true);
+function settleCompletedFocus(session, options) {
+  const task = findSessionTask(session);
+  creditFocus(session, session.duration, true);
   endFocusSession("本轮专注完成。星辰已点亮。");
 
   if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate([60, 80, 60]);
@@ -322,11 +345,14 @@ function completeFocus(options = {}) {
     : "本轮专注完成，点亮一颗星辰。";
 
   if (task && !task.done) {
+    const binding = { taskId: task.id, dayKey: session.dayKey };
     showToast(message, {
       type: "star",
       actionLabel: "勾选「" + (task.name.length > 6 ? task.name.slice(0, 6) + "…" : task.name) + "」",
       onAction: function() {
-        task.done = true;
+        const current = findSessionTask(binding);
+        if (!current || current.done) return;
+        current.done = true;
         commit();
       }
     });
@@ -335,11 +361,32 @@ function completeFocus(options = {}) {
   }
 }
 
+function completeFocus(options = {}) {
+  const session = appData.activeFocus;
+  if (!session || focusSettling) return;
+
+  focusSettling = true;
+  withFocusLock(function() {
+    if (!claimFocusSession(session.id)) {
+      onFocusSessionGone();
+      return;
+    }
+    const current = appData.activeFocus;
+    if (current.status !== "running" || getFocusRemainingMs() > 0) {
+      restoreFocusSession();
+      refreshAll();
+      return;
+    }
+    settleCompletedFocus(current, options);
+  }).then(function() {
+    focusSettling = false;
+  });
+}
+
 async function finishFocusEarly() {
   const session = appData.activeFocus;
   if (!session) return;
 
-  const wasRunning = session.status === "running";
   const elapsed = getFocusElapsedMinutes();
 
   if (elapsed < 1) {
@@ -353,28 +400,43 @@ async function finishFocusEarly() {
     confirmLabel: "收卷"
   });
 
-  if (!ok || !appData.activeFocus) return;
-  if (wasRunning && appData.activeFocus.status === "running" && getFocusRemainingMs() <= 0) {
-    completeFocus();
+  if (!ok || focusSettling) return;
+
+  focusSettling = true;
+  await withFocusLock(function() {
+    if (!claimFocusSession(session.id)) {
+      onFocusSessionGone();
+      return;
+    }
+    const current = appData.activeFocus;
+    if (current.status === "running" && getFocusRemainingMs() <= 0) {
+      settleCompletedFocus(current, {});
+      return;
+    }
+
+    const minutes = getFocusElapsedMinutes();
+    creditFocus(current, minutes, false);
+    endFocusSession("已收卷，记录 " + minutes + " 分钟。");
+    showToast("已收卷，记录 " + minutes + " 分钟专注。", { type: "success" });
+  });
+  focusSettling = false;
+}
+
+/* 启动、导入、其他标签页写入后调用：让计时器与存储中的会话一致 */
+function restoreFocusSession() {
+  const session = appData.activeFocus;
+
+  if (!session || session.status !== "running") {
+    stopTicker();
+    releaseWakeLock();
     return;
   }
 
-  recordFocus(elapsed, false);
-  endFocusSession("已收卷，记录 " + elapsed + " 分钟。");
-  showToast("已收卷，记录 " + elapsed + " 分钟专注。", { type: "success" });
-}
-
-function restoreFocusSession() {
-  const session = appData.activeFocus;
-  if (!session) return;
-
-  if (session.status === "running") {
-    if (getFocusRemainingMs() <= 0) {
-      completeFocus({ whileAway: true });
-    } else {
-      startTicker();
-      requestWakeLock();
-    }
+  if (getFocusRemainingMs() <= 0) {
+    completeFocus({ whileAway: true });
+  } else {
+    if (!focusTicker) startTicker();
+    requestWakeLock();
   }
 }
 
