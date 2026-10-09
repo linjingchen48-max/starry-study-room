@@ -18,7 +18,9 @@ const jsFiles = ["sw.js"]
   .concat(fs.readdirSync(path.join(ROOT, "scripts")).map((f) => "scripts/" + f))
   .concat(fs.readdirSync(path.join(ROOT, "js")).map((f) => "js/" + f))
   .concat(fs.readdirSync(path.join(ROOT, "tests")).filter((f) => f.endsWith(".js")).map((f) => "tests/" + f))
-  .concat(fs.readdirSync(path.join(ROOT, "tests/browser")).filter((f) => f.endsWith(".js")).map((f) => "tests/browser/" + f));
+  .concat(fs.existsSync(path.join(ROOT, "tests/browser"))
+    ? fs.readdirSync(path.join(ROOT, "tests/browser")).filter((f) => f.endsWith(".js")).map((f) => "tests/browser/" + f)
+    : []);
 
 jsFiles.forEach((file) => {
   try {
