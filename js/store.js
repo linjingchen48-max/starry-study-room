@@ -184,10 +184,15 @@ function normalizeActiveFocus(session) {
 
   if (status === "running" && !Number.isFinite(endsAt)) return null;
 
+  const startedAt = Number(session.startedAt) || Date.now();
+
   return {
+    // 缺省 id 由 startedAt 推导，保证多个标签页读到同一会话时得到同一个 id
+    id: typeof session.id === "string" && /^[\w-]{1,48}$/.test(session.id) ? session.id : "s" + startedAt.toString(36),
+    dayKey: isDateKey(session.dayKey) ? session.dayKey : dateKey(0, new Date(startedAt)),
     duration: duration,
     status: status,
-    startedAt: Number(session.startedAt) || Date.now(),
+    startedAt: startedAt,
     endsAt: status === "running" ? endsAt : null,
     remainingMs: status === "paused" ? remainingMs : totalMs,
     taskId: typeof session.taskId === "string" && /^[\w-]{0,48}$/.test(session.taskId) ? session.taskId : ""
@@ -280,18 +285,59 @@ function migrateData(raw, todayKey = dateKey()) {
 
 /* ---------- 持久化 ---------- */
 
+/*
+  storageStatus.issue：
+  - "corrupt"           原始数据无法解析，已另存到 backupKey，可继续使用
+  - "corrupt-unsaved"   无法解析且另存失败：锁定写入，直到用户下载原始数据并明确放弃
+  - "unsupported"       schemaVersion 来自更新版本或无法识别：只读，避免降级覆盖
+  - "external-future"   运行中其他标签页写入了更新版本的数据：只读，需刷新
+  - "external-legacy"   运行中旧版页面写入了 v1 数据：已用本页数据恢复，需关闭旧页面
+  writeLocked 为 true 时 saveData() 一律不写入。rawSnapshot 是原始字符串，供用户下载恢复。
+*/
 const storageStatus = {
   available: true,
-  loadError: false,
+  issue: null,
+  writeLocked: false,
+  rawSnapshot: null,
+  backupKey: null,
   writeError: false,
-  onWriteError: null
+  onWriteError: null,
+  onIssue: null
 };
+
+const LEGACY_BACKUP_KEY = STORAGE_KEY + "_pre_v2_backup";
 
 function getStorage() {
   try {
     return typeof localStorage !== "undefined" ? localStorage : null;
   } catch (error) {
     return null;
+  }
+}
+
+function setStorageIssue(issue, details = {}) {
+  storageStatus.issue = issue;
+  if (details.lock) storageStatus.writeLocked = true;
+  if (details.raw !== undefined) storageStatus.rawSnapshot = details.raw;
+  if (details.backupKey !== undefined) storageStatus.backupKey = details.backupKey;
+  if (typeof storageStatus.onIssue === "function") storageStatus.onIssue(issue);
+}
+
+/* "legacy"：v1（无 schemaVersion）；"current"：本版本；"unsupported"：更新版本或无法识别 */
+function classifySchema(raw) {
+  if (!isPlainObject(raw) || raw.schemaVersion === undefined) return "legacy";
+  if (raw.schemaVersion === 1) return "legacy";
+  if (raw.schemaVersion === SCHEMA_VERSION) return "current";
+  return "unsupported";
+}
+
+/* 只有写入后能原样读回才算备份成功 */
+function writeVerified(storage, key, value) {
+  try {
+    storage.setItem(key, value);
+    return storage.getItem(key) === value;
+  } catch (error) {
+    return false;
   }
 }
 
@@ -314,22 +360,41 @@ function loadData() {
 
   if (!saved) return createDefaultData();
 
+  let parsed;
   try {
-    return migrateData(JSON.parse(saved));
+    parsed = JSON.parse(saved);
   } catch (error) {
-    console.error("读取本地数据失败：", error);
-    storageStatus.loadError = true;
-    // 保留损坏的原始数据，避免下一次保存时被静默覆盖
-    try {
-      storage.setItem(STORAGE_KEY + "_corrupt_" + Date.now(), saved);
-    } catch (backupError) {
-      console.error(backupError);
+    parsed = undefined;
+  }
+
+  if (!isPlainObject(parsed)) {
+    const backupKey = STORAGE_KEY + "_corrupt_" + Date.now();
+    if (writeVerified(storage, backupKey, saved)) {
+      setStorageIssue("corrupt", { raw: saved, backupKey: backupKey });
+    } else {
+      setStorageIssue("corrupt-unsaved", { raw: saved, lock: true });
     }
     return createDefaultData();
   }
+
+  const schema = classifySchema(parsed);
+
+  if (schema === "unsupported") {
+    setStorageIssue("unsupported", { raw: saved, lock: true });
+    return migrateData(parsed);
+  }
+
+  // 首次升级前保留一份 v1 原文；失败不阻塞（迁移不丢弃 v1 已有字段）
+  if (schema === "legacy" && storage.getItem(LEGACY_BACKUP_KEY) === null) {
+    if (!writeVerified(storage, LEGACY_BACKUP_KEY, saved)) console.warn("未能保留 v1 原始数据备份");
+  }
+
+  return migrateData(parsed);
 }
 
-function saveData() {
+function saveData(options = {}) {
+  if (storageStatus.writeLocked) return false;
+
   const storage = getStorage();
   if (!storage) return false;
 
@@ -339,12 +404,161 @@ function saveData() {
     return true;
   } catch (error) {
     console.error("保存失败：", error);
-    if (!storageStatus.writeError && typeof storageStatus.onWriteError === "function") {
+    if (!options.quiet && !storageStatus.writeError && typeof storageStatus.onWriteError === "function") {
       storageStatus.onWriteError(error);
     }
     storageStatus.writeError = true;
     return false;
   }
+}
+
+/* 整体替换数据（导入、清空）：写入失败时回滚内存，本机存储保持原样 */
+function replaceAppData(next) {
+  if (storageStatus.writeLocked) return false;
+
+  const previous = appData;
+  appData = next;
+  if (saveData({ quiet: true })) return true;
+
+  appData = previous;
+  return false;
+}
+
+/* 用户已下载原始数据并确认放弃后，才允许解除 corrupt-unsaved 的写入锁 */
+function releaseCorruptLock() {
+  if (storageStatus.issue !== "corrupt-unsaved") return false;
+
+  storageStatus.writeLocked = false;
+  if (saveData({ quiet: true })) {
+    storageStatus.issue = null;
+    return true;
+  }
+  storageStatus.writeLocked = true;
+  return false;
+}
+
+/* ---------- 备份文件校验 ---------- */
+
+const BACKUP_APP_NAME = "星辰御书房";
+const BACKUP_MAX_BYTES = 5 * 1024 * 1024;
+const BACKUP_SIGNATURE_KEYS = [
+  "schemaVersion", "stars", "totalMinutes", "focusSessions", "seals", "practiceStats",
+  "distractions", "tasks", "tasksByDay", "mistakes", "review", "reviews", "dailyData"
+];
+const BACKUP_FIELD_SHAPES = {
+  tasks: "array",
+  mistakes: "array",
+  tasksByDay: "object",
+  reviews: "object",
+  review: "object",
+  dailyData: "object",
+  practiceStats: "object",
+  distractions: "object",
+  settings: "object",
+  stars: "count",
+  totalMinutes: "count",
+  focusSessions: "count",
+  seals: "count"
+};
+
+function matchesShape(value, shape) {
+  if (value === null || value === undefined) return true;
+  if (shape === "array") return Array.isArray(value);
+  if (shape === "object") return isPlainObject(value);
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+/* 返回 { ok: true, data, hasSettings } 或 { ok: false, error } */
+function parseBackupText(text) {
+  const fail = function(error) {
+    return { ok: false, error: error };
+  };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return fail("文件不是有效的 JSON。");
+  }
+  if (!isPlainObject(parsed)) return fail("文件内容不是星辰御书房的备份。");
+
+  let raw = parsed;
+  if ("appName" in parsed || "data" in parsed) {
+    if (parsed.appName !== BACKUP_APP_NAME || !isPlainObject(parsed.data)) {
+      return fail("这不是星辰御书房导出的备份文件。");
+    }
+    if (parsed.schemaVersion !== undefined && classifySchema({ schemaVersion: parsed.schemaVersion }) === "unsupported") {
+      return fail("这份备份来自更新的版本，请先刷新到最新版本再导入。");
+    }
+    raw = parsed.data;
+  }
+
+  if (classifySchema(raw) === "unsupported") {
+    return fail("这份备份来自更新的版本或版本无法识别，当前版本无法安全导入。");
+  }
+  if (!BACKUP_SIGNATURE_KEYS.some(function(key) {
+    return key in raw;
+  })) {
+    return fail("文件中没有可识别的星辰御书房数据。");
+  }
+
+  const badField = Object.keys(BACKUP_FIELD_SHAPES).find(function(key) {
+    return !matchesShape(raw[key], BACKUP_FIELD_SHAPES[key]);
+  });
+  if (badField) return fail("备份中的「" + badField + "」字段格式不正确，文件可能已损坏。");
+
+  return { ok: true, data: migrateData(raw), hasSettings: isPlainObject(raw.settings) };
+}
+
+/* ---------- 多标签页 ---------- */
+
+/*
+  用本机存储中的最新数据替换内存副本，供其他标签页写入后同步、以及结算前确认会话仍有效。
+  返回 "synced" | "skipped" | "legacy" | "unsupported"。
+  写入失败期间跳过同步，以免丢掉尚未写入的内存修改。
+*/
+function syncFromStorage() {
+  if (storageStatus.writeLocked || storageStatus.writeError) return "skipped";
+
+  const storage = getStorage();
+  if (!storage) return "skipped";
+
+  let saved = null;
+  try {
+    saved = storage.getItem(STORAGE_KEY);
+  } catch (error) {
+    return "skipped";
+  }
+  if (!saved) return "skipped";
+
+  let parsed;
+  try {
+    parsed = JSON.parse(saved);
+  } catch (error) {
+    return "skipped";
+  }
+  if (!isPlainObject(parsed)) return "skipped";
+
+  const schema = classifySchema(parsed);
+  if (schema === "unsupported") {
+    setStorageIssue("external-future", { raw: saved, lock: true });
+    return "unsupported";
+  }
+  if (schema === "legacy") {
+    // 旧版页面写入的 v1 数据会丢掉按日历史，立即用本页的 v2 数据恢复
+    saveData();
+    setStorageIssue("external-legacy", { raw: saved });
+    return "legacy";
+  }
+
+  appData = migrateData(parsed);
+  return "synced";
+}
+
+/* 结算前调用：只有存储中的进行中会话仍是这一轮时才可结算，防止多个标签页重复发放奖励 */
+function claimFocusSession(sessionId) {
+  syncFromStorage();
+  return Boolean(appData.activeFocus && appData.activeFocus.id === sessionId);
 }
 
 let appData = loadData();
@@ -406,4 +620,31 @@ function findTodayTask(id) {
   return getTasksFor().find(function(task) {
     return task.id === id;
   }) || null;
+}
+
+/* 绑定的御案先在入座当天查找；若已被结转到今日，再查今日 */
+function findSessionTask(session, todayKey = dateKey()) {
+  if (!session || !session.taskId) return null;
+  const keys = session.dayKey === todayKey ? [todayKey] : [session.dayKey, todayKey];
+
+  for (let i = 0; i < keys.length; i++) {
+    const task = getTasksFor(keys[i]).find(function(item) {
+      return item.id === session.taskId;
+    });
+    if (task) return task;
+  }
+  return null;
+}
+
+/*
+  跨日归属：一轮专注的分钟、轮数（及星辰所在的日统计）记在「入座当天」(session.dayKey)，
+  与绑定御案的日期一致；跨过午夜或离开数日后才结算，也不会改记到结算日。
+*/
+function creditFocus(session, minutes, lightStar) {
+  const day = ensureDay(session.dayKey || dateKey());
+  appData.totalMinutes += minutes;
+  appData.focusSessions += 1;
+  day.minutes += minutes;
+  day.sessions += 1;
+  if (lightStar) appData.stars += 1;
 }

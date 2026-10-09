@@ -68,6 +68,17 @@ document.addEventListener("keydown", function(event) {
   }
 });
 
+/* ---------- 多标签页 ---------- */
+
+window.addEventListener("storage", function(event) {
+  if (event.key !== STORAGE_KEY || event.storageArea !== localStorage) return;
+  if (syncFromStorage() !== "synced") return;
+
+  restoreFocusSession();
+  applyTheme();
+  renderAllNow();
+});
+
 /* ---------- 跨日 ---------- */
 
 let currentDayKey = dateKey();
@@ -124,11 +135,10 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
 applyTheme();
 showRoute(getRouteFromHash());
 renderAllNow();
+renderStorageAlert();
 restoreFocusSession();
 document.documentElement.classList.add("is-ready");
 
 if (!storageStatus.available) {
   showToast("当前浏览器无法使用本机存储，数据不会被保存。", { type: "error", duration: 8000 });
-} else if (storageStatus.loadError) {
-  showToast("本地数据读取失败，已另存原始数据并以空白档案启动。", { type: "error", duration: 8000 });
 }

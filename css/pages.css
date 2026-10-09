@@ -1195,3 +1195,20 @@ html:not(.is-ready) *::after {
   margin: 0;
   color: var(--text);
 }
+
+/* ---------- 存储异常提示 ---------- */
+
+.storage-alert {
+  margin-bottom: var(--space-6);
+}
+
+.storage-alert-text {
+  margin: 0;
+}
+
+.storage-alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
