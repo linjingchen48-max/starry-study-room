@@ -1,9 +1,15 @@
 /*
   预缓存全部静态资源，缓存优先、离线可用。
-  发版时更新 CACHE_NAME；新版本安装后会等待，由页面提示用户刷新再接管。
+  CACHE_NAME 由 npm run stamp 生成（版本号 + 预缓存资源哈希），npm run check 会校验；
+  新版本安装后会等待，由页面提示用户刷新再接管。
+
+  防止新旧脚本混用：
+  - 安装时以 cache: "reload" 绕过浏览器 HTTP 缓存，整组资源一次性写入新缓存（addAll 要么全成功要么安装失败）
+  - 只从本版本的缓存取资源，不会命中旧版本缓存
+  - 激活后删除其他版本缓存（含 v1 的 starry-study-room-v11）
 */
 
-const CACHE_NAME = "starry-study-room-v2.0.0";
+const CACHE_NAME = "starry-study-room-v2.0.1-e4e5bf9e";
 
 const FILES_TO_CACHE = [
   "./",
@@ -30,7 +36,11 @@ const FILES_TO_CACHE = [
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
-      return cache.addAll(FILES_TO_CACHE);
+      return cache.addAll(
+        FILES_TO_CACHE.map(function (url) {
+          return new Request(url, { cache: "reload" });
+        })
+      );
     })
   );
 });
@@ -60,11 +70,13 @@ self.addEventListener("fetch", function (event) {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then(function (cached) {
-      if (cached) return cached;
-      return fetch(event.request).catch(function () {
-        if (event.request.mode === "navigate") return caches.match("./index.html");
-        return Response.error();
+    caches.open(CACHE_NAME).then(function (cache) {
+      return cache.match(event.request, { ignoreSearch: true }).then(function (cached) {
+        if (cached) return cached;
+        return fetch(event.request).catch(function () {
+          if (event.request.mode === "navigate") return cache.match("./index.html");
+          return Response.error();
+        });
       });
     })
   );

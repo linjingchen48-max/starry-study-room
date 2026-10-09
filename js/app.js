@@ -121,9 +121,11 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
         console.warn("Service Worker 注册失败：", error);
       });
 
+    // 首次安装时 clients.claim() 也会触发 controllerchange，此时页面本就是新版本，无需刷新
+    const hadController = Boolean(navigator.serviceWorker.controller);
     let reloading = false;
     navigator.serviceWorker.addEventListener("controllerchange", function() {
-      if (reloading) return;
+      if (!hadController || reloading) return;
       reloading = true;
       location.reload();
     });
